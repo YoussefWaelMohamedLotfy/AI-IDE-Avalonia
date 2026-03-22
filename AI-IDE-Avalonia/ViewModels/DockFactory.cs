@@ -31,8 +31,6 @@ public class DockFactory : Factory
     public override IRootDock CreateLayout()
     {
         var document1 = new DocumentViewModel {Id = "Document1", Title = "Document1"};
-        var document2 = new DocumentViewModel {Id = "Document2", Title = "Document2"};
-        var document3 = new DocumentViewModel {Id = "Document3", Title = "Document3", CanClose = true};
         var tool1 = new Tool1ViewModel {Id = "Tool1", Title = "Tool1", KeepPinnedDockableVisible = true};
         var tool2 = new Tool2ViewModel {Id = "Tool2", Title = "Tool2", KeepPinnedDockableVisible = true};
         var tool3 = new Tool3ViewModel {Id = "Tool3", Title = "Tool3", CanDrag = false };
@@ -84,7 +82,7 @@ public class DockFactory : Factory
             // DockGroup = "CustomDocumentDock",
             IsCollapsable = false,
             ActiveDockable = document1,
-            VisibleDockables = CreateList<IDockable>(document1, document2, document3),
+            VisibleDockables = CreateList<IDockable>(document1),
             CanCreateDocument = true,
             // CanDrop = false,
             EnableWindowDrag = true,
@@ -155,8 +153,6 @@ public class DockFactory : Factory
         ContextLocator = new Dictionary<string, Func<object?>>
         {
             ["Document1"] = () => new DemoDocument(),
-            ["Document2"] = () => new DemoDocument(),
-            ["Document3"] = () => new DemoDocument(),
             ["Tool1"] = () => new Tool1(),
             ["Tool2"] = () => new Tool2(),
             ["Tool3"] = () => new Tool3(),
