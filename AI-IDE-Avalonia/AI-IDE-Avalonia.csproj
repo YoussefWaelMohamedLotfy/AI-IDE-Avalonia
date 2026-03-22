@@ -28,6 +28,8 @@
     <PackageReference Include="Dock.Avalonia.Themes.Fluent" Version="11.3.11.22" />
     <PackageReference Include="Dock.Model.Mvvm" Version="11.3.11.22" />
     <PackageReference Include="Dock.Serializer.SystemTextJson" Version="11.3.11.22" />
+    <PackageReference Include="Microsoft.Agents.AI" Version="1.0.0-rc4" />
+    <PackageReference Include="OllamaSharp" Version="5.4.24" />
     <PackageReference Include="StaticViewLocator" Version="0.4.0">
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       <PrivateAssets>all</PrivateAssets>
