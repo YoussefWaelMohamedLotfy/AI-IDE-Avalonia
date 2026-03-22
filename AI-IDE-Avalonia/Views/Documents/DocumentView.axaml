@@ -38,7 +38,7 @@
               </Border>
 
               <!-- Assistant bubble — left aligned -->
-              <Border IsVisible="{Binding !IsUser}"
+              <Border IsVisible="{Binding IsAssistant}"
                       HorizontalAlignment="Left"
                       MaxWidth="520"
                       Background="#2D2D30"
@@ -54,6 +54,31 @@
                              TextWrapping="Wrap"
                              FontSize="13"
                              LineHeight="20" />
+                </StackPanel>
+              </Border>
+
+              <!-- Tool-call bubble — left aligned, distinct style -->
+              <Border IsVisible="{Binding IsToolCall}"
+                      HorizontalAlignment="Left"
+                      MaxWidth="560"
+                      Background="#1A3A2A"
+                      BorderBrush="#2E7D52"
+                      BorderThickness="1"
+                      CornerRadius="8"
+                      Padding="10,7"
+                      Margin="0,0,64,0">
+                <StackPanel>
+                  <TextBlock Text="tool call"
+                             FontSize="10"
+                             Foreground="#4CAF82"
+                             Opacity="0.8"
+                             Margin="0,0,0,3" />
+                  <TextBlock Text="{Binding Content}"
+                             TextWrapping="Wrap"
+                             FontFamily="Consolas,Menlo,monospace"
+                             FontSize="12"
+                             Foreground="#A8D5B5"
+                             LineHeight="18" />
                 </StackPanel>
               </Border>
 

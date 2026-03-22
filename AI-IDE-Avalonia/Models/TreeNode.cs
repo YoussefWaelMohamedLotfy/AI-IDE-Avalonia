@@ -12,7 +12,8 @@ public class TreeNode
     {
         Name = name;
         IsFolder = isFolder;
-        Children = children;
+        // Folders always have an initialised collection so children can be added later.
+        Children = isFolder ? (children ?? new ObservableCollection<TreeNode>()) : children;
     }
 
     private static ObservableCollection<TreeNode> Nodes(params TreeNode[] nodes) =>
