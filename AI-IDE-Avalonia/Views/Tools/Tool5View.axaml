@@ -1,0 +1,180 @@
+<UserControl x:Class="AI_IDE_Avalonia.Views.Tools.Tool5View"
+             xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:vm="using:AI_IDE_Avalonia.ViewModels.Tools"
+             xmlns:models="using:AI_IDE_Avalonia.Models.Documents"
+             mc:Ignorable="d"
+             d:DesignWidth="400" d:DesignHeight="600"
+             x:DataType="vm:Tool5ViewModel" x:CompileBindings="True">
+
+  <Grid RowDefinitions="*,Auto">
+
+    <!-- Chat message list -->
+    <ScrollViewer Grid.Row="0"
+                  x:Name="MessagesScroller"
+                  HorizontalScrollBarVisibility="Disabled"
+                  VerticalScrollBarVisibility="Auto"
+                  Padding="8,8,8,4">
+      <ItemsControl ItemsSource="{Binding Messages}" Margin="0,0,0,16">
+        <ItemsControl.ItemTemplate>
+          <DataTemplate x:DataType="models:ChatMessage">
+            <Grid Margin="0,3">
+
+              <!-- User bubble — right aligned -->
+              <Border IsVisible="{Binding IsUser}"
+                      HorizontalAlignment="Right"
+                      MaxWidth="520"
+                      Background="#1E6FD9"
+                      CornerRadius="14,14,4,14"
+                      Padding="12,8"
+                      Margin="64,0,0,0">
+                <SelectableTextBlock Text="{Binding Content}"
+                           TextWrapping="Wrap"
+                           Foreground="White"
+                           FontSize="13"
+                           LineHeight="20" />
+              </Border>
+
+              <!-- Assistant bubble — left aligned -->
+              <Border IsVisible="{Binding IsAssistant}"
+                      HorizontalAlignment="Left"
+                      MaxWidth="520"
+                      Background="#2D2D30"
+                      CornerRadius="14,14,14,4"
+                      Padding="12,8"
+                      Margin="0,0,64,0">
+                <StackPanel>
+                  <TextBlock Text="{ReflectionBinding DataContext.CurrentModelLabel, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                             IsVisible="{Binding Content, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                             FontSize="10"
+                             Opacity="0.5"
+                             Margin="0,0,0,3" />
+                  <SelectableTextBlock Text="{Binding Content}"
+                             IsVisible="{Binding Content, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                             TextWrapping="Wrap"
+                             FontSize="13"
+                             LineHeight="20" />
+
+                  <!-- Typing dots — visible while waiting for first token -->
+                  <!-- Height reserves space for the upward wave; ClipToBounds=False lets dots travel beyond -->
+                  <Border IsVisible="{Binding Content, Converter={x:Static StringConverters.IsNullOrEmpty}}"
+                          Height="24"
+                          HorizontalAlignment="Stretch"
+                          ClipToBounds="False"
+                          Padding="0,8,0,0">
+                    <StackPanel Orientation="Horizontal"
+                                Spacing="5"
+                                HorizontalAlignment="Center"
+                                VerticalAlignment="Bottom">
+                      <StackPanel.Styles>
+                        <Style Selector="Ellipse.dot-1">
+                          <Style.Animations>
+                            <Animation Duration="0:0:0.9" Delay="0:0:0.0" IterationCount="INFINITE" Easing="SineEaseInOut">
+                              <KeyFrame Cue="0%">   <Setter Property="Margin" Value="0,0,0,0" /> </KeyFrame>
+                              <KeyFrame Cue="30%">  <Setter Property="Margin" Value="0,0,0,8" /> </KeyFrame>
+                              <KeyFrame Cue="60%">  <Setter Property="Margin" Value="0,0,0,0" /> </KeyFrame>
+                              <KeyFrame Cue="100%"> <Setter Property="Margin" Value="0,0,0,0" /> </KeyFrame>
+                            </Animation>
+                          </Style.Animations>
+                        </Style>
+                        <Style Selector="Ellipse.dot-2">
+                          <Style.Animations>
+                            <Animation Duration="0:0:0.9" Delay="0:0:0.15" IterationCount="INFINITE" Easing="SineEaseInOut">
+                              <KeyFrame Cue="0%">   <Setter Property="Margin" Value="0,0,0,0" /> </KeyFrame>
+                              <KeyFrame Cue="30%">  <Setter Property="Margin" Value="0,0,0,8" /> </KeyFrame>
+                              <KeyFrame Cue="60%">  <Setter Property="Margin" Value="0,0,0,0" /> </KeyFrame>
+                              <KeyFrame Cue="100%"> <Setter Property="Margin" Value="0,0,0,0" /> </KeyFrame>
+                            </Animation>
+                          </Style.Animations>
+                        </Style>
+                        <Style Selector="Ellipse.dot-3">
+                          <Style.Animations>
+                            <Animation Duration="0:0:0.9" Delay="0:0:0.30" IterationCount="INFINITE" Easing="SineEaseInOut">
+                              <KeyFrame Cue="0%">   <Setter Property="Margin" Value="0,0,0,0" /> </KeyFrame>
+                              <KeyFrame Cue="30%">  <Setter Property="Margin" Value="0,0,0,8" /> </KeyFrame>
+                              <KeyFrame Cue="60%">  <Setter Property="Margin" Value="0,0,0,0" /> </KeyFrame>
+                              <KeyFrame Cue="100%"> <Setter Property="Margin" Value="0,0,0,0" /> </KeyFrame>
+                            </Animation>
+                          </Style.Animations>
+                        </Style>
+                      </StackPanel.Styles>
+                      <Ellipse Classes="dot-1" Width="7" Height="7" Fill="#AAAAAA" />
+                      <Ellipse Classes="dot-2" Width="7" Height="7" Fill="#AAAAAA" />
+                      <Ellipse Classes="dot-3" Width="7" Height="7" Fill="#AAAAAA" />
+                    </StackPanel>
+                  </Border>
+                </StackPanel>
+              </Border>
+
+              <!-- Tool-call bubble — left aligned, distinct style -->
+              <Border IsVisible="{Binding IsToolCall}"
+                      HorizontalAlignment="Left"
+                      MaxWidth="560"
+                      Background="#1A3A2A"
+                      BorderBrush="#2E7D52"
+                      BorderThickness="1"
+                      CornerRadius="8"
+                      Padding="10,7"
+                      Margin="0,0,64,0">
+                <StackPanel>
+                  <TextBlock Text="tool call"
+                             FontSize="10"
+                             Foreground="#4CAF82"
+                             Opacity="0.8"
+                             Margin="0,0,0,3" />
+                  <SelectableTextBlock Text="{Binding Content}"
+                             TextWrapping="Wrap"
+                             FontFamily="Consolas,Menlo,monospace"
+                             FontSize="12"
+                             Foreground="#A8D5B5"
+                             LineHeight="18" />
+                </StackPanel>
+              </Border>
+
+            </Grid>
+          </DataTemplate>
+        </ItemsControl.ItemTemplate>
+      </ItemsControl>
+    </ScrollViewer>
+
+    <!-- Input area -->
+    <Border Grid.Row="1"
+            BorderThickness="0,1,0,0"
+            BorderBrush="{DynamicResource SystemControlForegroundBaseMediumLowBrush}"
+            Padding="8">
+      <Grid ColumnDefinitions="*,Auto,Auto">
+        <TextBox Grid.Column="0"
+                 x:Name="InputBox"
+                 Text="{Binding InputText}"
+                 Watermark="{Binding InputWatermark}"
+                 IsEnabled="{Binding !IsSending}"
+                 AcceptsReturn="False"
+                 Padding="10,7"
+                 VerticalContentAlignment="Center" />
+        <Button Grid.Column="1"
+                Content="Send"
+                Command="{Binding SendCommand}"
+                IsVisible="{Binding !IsSending}"
+                Margin="6,0,0,0"
+                Padding="14,7"
+                VerticalAlignment="Stretch" />
+        <Button Grid.Column="1"
+                Content="Stop"
+                Command="{Binding CancelSendCommand}"
+                IsVisible="{Binding IsSending}"
+                Margin="6,0,0,0"
+                Padding="14,7"
+                VerticalAlignment="Stretch" />
+        <Button Grid.Column="2"
+                Content="Clear"
+                Command="{Binding ClearCommand}"
+                Margin="4,0,0,0"
+                Padding="14,7"
+                VerticalAlignment="Stretch" />
+      </Grid>
+    </Border>
+
+  </Grid>
+</UserControl>
