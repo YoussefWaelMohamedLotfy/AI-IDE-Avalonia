@@ -140,6 +140,14 @@ public class DockFactory : Factory
         return rootDock;
     }
 
+    public override void CloseDockable(IDockable dockable)
+    {
+        base.CloseDockable(dockable);
+
+        if (dockable is IAsyncDisposable asyncDisposable)
+            _ = asyncDisposable.DisposeAsync().AsTask();
+    }
+
     public override IDockWindow? CreateWindowFrom(IDockable dockable)
     {
         var window = base.CreateWindowFrom(dockable);

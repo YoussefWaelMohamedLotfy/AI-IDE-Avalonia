@@ -25,7 +25,7 @@ using IAiChatClient = Microsoft.Extensions.AI.IChatClient;
 
 namespace AI_IDE_Avalonia.ViewModels.Documents;
 
-public partial class DocumentViewModel : Document, IDockCommandBarProvider
+public partial class DocumentViewModel : Document, IDockCommandBarProvider, IAsyncDisposable
 {
     private const string OllamaEndpoint = "http://localhost:11434";
     private const string ModelName = "granite4:latest";
@@ -59,9 +59,22 @@ public partial class DocumentViewModel : Document, IDockCommandBarProvider
     private readonly RelayCommand _renameCommand;
     private readonly RelayCommand _closeCommand;
 
+    // ── Input history ────────────────────────────────────────────────────────────
+
+    private readonly List<string> _inputHistory = new();
+    private int _historyIndex = -1;
+    private string _pendingInput = string.Empty;
+    private bool _navigating;
+
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(SendCommand))]
     private string _inputText = string.Empty;
+
+    partial void OnInputTextChanged(string value)
+    {
+        if (!_navigating)
+            _historyIndex = -1;
+    }
 
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(SendCommand))]
@@ -192,6 +205,11 @@ public partial class DocumentViewModel : Document, IDockCommandBarProvider
         InputText = string.Empty;
         IsSending = true;
 
+        if (_inputHistory.Count == 0 || _inputHistory[^1] != userText)
+            _inputHistory.Add(userText);
+        _historyIndex = -1;
+        _pendingInput = string.Empty;
+
         var userMsg = new ChatMessage { IsUser = true, Kind = ChatMessageKind.User, Content = userText };
         Messages.Add(userMsg);
 
@@ -209,6 +227,45 @@ public partial class DocumentViewModel : Document, IDockCommandBarProvider
     }
 
     private bool CanSend() => !IsSending && !string.IsNullOrWhiteSpace(InputText);
+
+    internal void NavigateHistoryUp()
+    {
+        if (_inputHistory.Count == 0) return;
+
+        if (_historyIndex == -1)
+        {
+            _pendingInput = InputText;
+            _historyIndex = _inputHistory.Count - 1;
+        }
+        else if (_historyIndex > 0)
+        {
+            _historyIndex--;
+        }
+
+        _navigating = true;
+        InputText = _inputHistory[_historyIndex];
+        _navigating = false;
+    }
+
+    internal void NavigateHistoryDown()
+    {
+        if (_historyIndex == -1) return;
+
+        if (_historyIndex < _inputHistory.Count - 1)
+        {
+            _historyIndex++;
+            _navigating = true;
+            InputText = _inputHistory[_historyIndex];
+            _navigating = false;
+        }
+        else
+        {
+            _historyIndex = -1;
+            _navigating = true;
+            InputText = _pendingInput;
+            _navigating = false;
+        }
+    }
 
     // ── Ollama send ────────────────────────────────────────────────────────────
 
@@ -267,7 +324,7 @@ public partial class DocumentViewModel : Document, IDockCommandBarProvider
                         try
                         {
                             result = await func.InvokeAsync(
-                                new Ai.AIFunctionArguments(call.Arguments!), ct);
+                                new(call.Arguments!), ct);
                         }
                         catch (Exception ex)
                         {
@@ -433,6 +490,17 @@ public partial class DocumentViewModel : Document, IDockCommandBarProvider
             return;
 
         Factory?.CloseDockable(this);
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        GC.SuppressFinalize(this);
+        AIProviderService.Instance.ProviderChanged -= OnProviderChanged;
+        await DisposeGitHubCopilotAsync();
+        if (_ollamaClient is IAsyncDisposable asyncDisposable)
+            await asyncDisposable.DisposeAsync();
+        else if (_ollamaClient is IDisposable disposable)
+            disposable.Dispose();
     }
 
     private void RaiseCommandBarsChanged()
