@@ -1,6 +1,8 @@
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Windows.Input;
 using AI_IDE_Avalonia.Models;
+using AI_IDE_Avalonia.Services;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Dock.Model.Controls;
@@ -8,11 +10,19 @@ using Dock.Model.Core;
 
 namespace AI_IDE_Avalonia.ViewModels;
 
-public class MainWindowViewModel : ObservableObject
+public partial class MainWindowViewModel : ObservableObject
 {
     private readonly IFactory? _factory;
     private IRootDock? _layout;
     private string _globalStatus = "Global: (none)";
+
+    [ObservableProperty]
+    private string _selectedProvider = AIProviderService.AvailableProviders[0];
+
+    public IReadOnlyList<string> AvailableProviders { get; } = AIProviderService.AvailableProviders;
+
+    partial void OnSelectedProviderChanged(string value) =>
+        AIProviderService.Instance.SelectedProvider = value;
 
     public IRootDock? Layout
     {

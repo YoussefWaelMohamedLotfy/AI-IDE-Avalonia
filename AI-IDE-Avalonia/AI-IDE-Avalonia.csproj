@@ -28,7 +28,9 @@
     <PackageReference Include="Dock.Avalonia.Themes.Fluent" Version="11.3.11.22" />
     <PackageReference Include="Dock.Model.Mvvm" Version="11.3.11.22" />
     <PackageReference Include="Dock.Serializer.SystemTextJson" Version="11.3.11.22" />
+    <PackageReference Include="GitHub.Copilot.SDK" Version="0.2.0" />
     <PackageReference Include="Microsoft.Agents.AI" Version="1.0.0-rc4" />
+    <PackageReference Include="Microsoft.Agents.AI.GitHub.Copilot" Version="1.0.0-preview.260311.1" />
     <PackageReference Include="OllamaSharp" Version="5.4.24" />
     <PackageReference Include="StaticViewLocator" Version="0.4.0">
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>

@@ -46,7 +46,7 @@
                       Padding="12,8"
                       Margin="0,0,64,0">
                 <StackPanel>
-                  <TextBlock Text="granite4"
+                  <TextBlock Text="{ReflectionBinding DataContext.CurrentModelLabel, RelativeSource={RelativeSource AncestorType=UserControl}}"
                              FontSize="10"
                              Opacity="0.5"
                              Margin="0,0,0,3" />
@@ -153,7 +153,7 @@
         <TextBox Grid.Column="0"
                  x:Name="InputBox"
                  Text="{Binding InputText}"
-                 Watermark="Ask granite4:latest via Ollama anything"                 IsEnabled="{Binding !IsSending}"
+                 Watermark="{Binding InputWatermark}"                 IsEnabled="{Binding !IsSending}"
                  AcceptsReturn="False"
                  Padding="10,7"
                  VerticalContentAlignment="Center" />
