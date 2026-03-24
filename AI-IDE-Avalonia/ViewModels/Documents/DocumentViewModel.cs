@@ -3,11 +3,13 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
 using System.Text;
+using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using AI_IDE_Avalonia.Models.Documents;
 using AI_IDE_Avalonia.Services;
 using AI_IDE_Avalonia.ViewModels.Tools;
+using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Dock.Model.CommandBars;
@@ -136,6 +138,25 @@ public partial class DocumentViewModel : Document, IDockCommandBarProvider
                 Content = SystemInstructions,
             },
             Tools = BuildTools().OfType<Ai.AIFunction>().ToList(),
+            Hooks = new SessionHooks
+            {
+                OnPostToolUse = (input, _) =>
+                {
+                    var argsJson = input.ToolArgs is null ? string.Empty
+                        : JsonSerializer.Serialize(input.ToolArgs);
+                    var resultJson = input.ToolResult is null ? string.Empty
+                        : JsonSerializer.Serialize(input.ToolResult);
+
+                    var toolMsg = new ChatMessage
+                    {
+                        IsUser = false,
+                        Kind = ChatMessageKind.ToolCall,
+                        Content = $"🔧 {input.ToolName}({argsJson})\n→ {resultJson}",
+                    };
+                    Dispatcher.UIThread.Post(() => Messages.Add(toolMsg));
+                    return Task.FromResult<PostToolUseHookOutput?>(new PostToolUseHookOutput());
+                },
+            },
         };
 
         _copilotAgent = new GitHubCopilotAgent(
