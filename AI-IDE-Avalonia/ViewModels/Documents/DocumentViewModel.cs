@@ -131,13 +131,14 @@ public partial class DocumentViewModel : Document, IDockCommandBarProvider
 
         var sessionConfig = new SessionConfig
         {
+            Model = "gpt-5-mini",
             OnPermissionRequest = PermissionHandler.ApproveAll,
             SystemMessage = new SystemMessageConfig
             {
                 Mode = SystemMessageMode.Append,
                 Content = SystemInstructions,
             },
-            Tools = BuildTools().OfType<Ai.AIFunction>().ToList(),
+            Tools = [.. BuildTools().OfType<Ai.AIFunction>()],
             Hooks = new SessionHooks
             {
                 OnPostToolUse = (input, _) =>
@@ -330,21 +331,17 @@ public partial class DocumentViewModel : Document, IDockCommandBarProvider
     private void AppendErrorToLastAssistant(string message)
     {
         var last = Messages.LastOrDefault(m => m.Kind == ChatMessageKind.Assistant);
-        if (last is not null)
-        {
-            last.Content = string.IsNullOrWhiteSpace(last.Content)
+        last?.Content = string.IsNullOrWhiteSpace(last.Content)
                 ? $"[Error: {message}]"
                 : last.Content + $"\n\n[Error: {message}]";
-        }
     }
 
     private static List<Ai.AITool> BuildTools()
     {
         var tool1 = SharedTool1;
-        if (tool1 is null) return [];
-
-        return
-        [
+        return tool1 is null
+            ? []
+            : [
             Ai.AIFunctionFactory.Create(
                 new Func<string, string>(query => tool1.SearchNodes(query)),
                 "search_tree_nodes",
@@ -382,39 +379,39 @@ public partial class DocumentViewModel : Document, IDockCommandBarProvider
 
         var menuItems = new List<DockCommandBarItem>
         {
-            new DockCommandBarItem("_Document")
+            new("_Document")
             {
-                Items = new List<DockCommandBarItem>
-                {
-                    new DockCommandBarItem($"Active: {displayTitle}") { Order = 0 },
-                    new DockCommandBarItem("_Toggle Modified") { Command = _toggleModifiedCommand, Order = 1 },
-                    new DockCommandBarItem("_Rename") { Command = _renameCommand, Order = 2 },
-                    new DockCommandBarItem(null) { IsSeparator = true, Order = 3 },
-                    new DockCommandBarItem("_Close") { Command = _closeCommand, Order = 4 }
-                }
+                Items =
+                [
+                    new($"Active: {displayTitle}") { Order = 0 },
+                    new("_Toggle Modified") { Command = _toggleModifiedCommand, Order = 1 },
+                    new("_Rename") { Command = _renameCommand, Order = 2 },
+                    new(null) { IsSeparator = true, Order = 3 },
+                    new("_Close") { Command = _closeCommand, Order = 4 }
+                ]
             }
         };
 
         var toolItems = new List<DockCommandBarItem>
         {
-            new DockCommandBarItem("Toggle Modified") { Command = _toggleModifiedCommand, Order = 0 },
-            new DockCommandBarItem("Rename") { Command = _renameCommand, Order = 1 },
-            new DockCommandBarItem("Close") { Command = _closeCommand, Order = 2 }
+            new("Toggle Modified") { Command = _toggleModifiedCommand, Order = 0 },
+            new("Rename") { Command = _renameCommand, Order = 1 },
+            new("Close") { Command = _closeCommand, Order = 2 }
         };
 
-        return new List<DockCommandBarDefinition>
-        {
-            new DockCommandBarDefinition("DocumentMenu", DockCommandBarKind.Menu)
+        return
+        [
+            new("DocumentMenu", DockCommandBarKind.Menu)
             {
                 Order = 0,
                 Items = menuItems
             },
-            new DockCommandBarDefinition("DocumentToolBar", DockCommandBarKind.ToolBar)
+            new("DocumentToolBar", DockCommandBarKind.ToolBar)
             {
                 Order = 1,
                 Items = toolItems
             }
-        };
+        ];
     }
 
     private void ToggleModified()
