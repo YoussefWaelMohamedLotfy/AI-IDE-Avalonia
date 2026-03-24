@@ -30,7 +30,7 @@
                       CornerRadius="14,14,4,14"
                       Padding="12,8"
                       Margin="64,0,0,0">
-                <TextBlock Text="{Binding Content}"
+                <SelectableTextBlock Text="{Binding Content}"
                            TextWrapping="Wrap"
                            Foreground="White"
                            FontSize="13"
@@ -50,7 +50,7 @@
                              FontSize="10"
                              Opacity="0.5"
                              Margin="0,0,0,3" />
-                  <TextBlock Text="{Binding Content}"
+                  <SelectableTextBlock Text="{Binding Content}"
                              TextWrapping="Wrap"
                              FontSize="13"
                              LineHeight="20" />
@@ -73,7 +73,7 @@
                              Foreground="#4CAF82"
                              Opacity="0.8"
                              Margin="0,0,0,3" />
-                  <TextBlock Text="{Binding Content}"
+                  <SelectableTextBlock Text="{Binding Content}"
                              TextWrapping="Wrap"
                              FontFamily="Consolas,Menlo,monospace"
                              FontSize="12"
