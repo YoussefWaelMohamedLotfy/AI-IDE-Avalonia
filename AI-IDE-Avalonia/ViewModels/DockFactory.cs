@@ -37,7 +37,6 @@ public class DockFactory : Factory
         Tool5ViewModel.SharedTool1 = tool1;
         var tool2 = new Tool2ViewModel {Id = "Tool2", Title = "Tool2", KeepPinnedDockableVisible = true};
         var tool3 = new Tool3ViewModel {Id = "Tool3", Title = "Tool3", CanDrag = false };
-        var tool4 = new Tool4ViewModel {Id = "Tool4", Title = "Tool4", CanDrag = false };
         var tool5 = new Tool5ViewModel {Id = "Tool5", Title = "Tool5" };
 
         var leftDock = new ProportionalDock
@@ -58,7 +57,7 @@ public class DockFactory : Factory
                 new ToolDock
                 {
                     ActiveDockable = tool3,
-                    VisibleDockables = CreateList<IDockable>(tool3, tool4),
+                    VisibleDockables = CreateList<IDockable>(tool3),
                     Alignment = Alignment.Bottom,
                     CanDrag = false,
                     CanDrop = false
@@ -174,7 +173,6 @@ public class DockFactory : Factory
             ["Tool1"] = () => new Tool1(),
             ["Tool2"] = () => new Tool2(),
             ["Tool3"] = () => new Tool3(),
-            ["Tool4"] = () => new Tool4(),
             ["Tool5"] = () => new Tool5(),
             ["Dashboard"] = () => layout,
             ["Home"] = () => _context

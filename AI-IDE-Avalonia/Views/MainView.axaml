@@ -33,11 +33,6 @@
           <MenuItem Header="_Show Windows" Command="{Binding ShowWindows}" />
         </MenuItem>
       </Menu>
-      <ComboBox ItemsSource="{Binding AvailableProviders}"
-                SelectedItem="{Binding SelectedProvider}"
-                VerticalAlignment="Center"
-                MinWidth="140"
-                Margin="8,0,0,0" />
     </StackPanel>
     <Panel x:Name="ToolBar" DataContext="{Binding Layout}" Grid.Row="0" Grid.Column="1">
       <Grid ColumnDefinitions="Auto,Auto,Auto,Auto,200,Auto,Auto,Auto"

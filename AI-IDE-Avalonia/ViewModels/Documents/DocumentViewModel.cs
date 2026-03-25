@@ -1,17 +1,33 @@
 using System;
 using System.Collections.Generic;
+using System.Threading.Tasks;
+using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Dock.Model.CommandBars;
 using Dock.Model.Mvvm.Controls;
 
 namespace AI_IDE_Avalonia.ViewModels.Documents;
 
-public partial class DocumentViewModel : Document, IDockCommandBarProvider
+public partial class DocumentViewModel : Document, IDockCommandBarProvider, IAsyncDisposable
 {
     private int _renameCounter;
     private readonly RelayCommand _toggleModifiedCommand;
     private readonly RelayCommand _renameCommand;
     private readonly RelayCommand _closeCommand;
+
+    [ObservableProperty]
+    private string _documentText = "";
+
+    [ObservableProperty]
+    private string _selectedLanguageExtension = ".cs";
+
+    /// <summary>
+    /// Raised by <see cref="DisposeAsync"/> just before the ViewModel is torn down.
+    /// The view subscribes to this to trigger its own cleanup.
+    /// </summary>
+    public event EventHandler? Disposing;
+
+    public event EventHandler? CommandBarsChanged;
 
     public DocumentViewModel()
     {
@@ -20,7 +36,16 @@ public partial class DocumentViewModel : Document, IDockCommandBarProvider
         _closeCommand = new RelayCommand(CloseDocument);
     }
 
-    public event EventHandler? CommandBarsChanged;
+    public ValueTask DisposeAsync()
+    {
+        Disposing?.Invoke(this, EventArgs.Empty);
+
+        // Clear all event subscribers so nothing holds references to this ViewModel.
+        Disposing = null;
+        CommandBarsChanged = null;
+
+        return ValueTask.CompletedTask;
+    }
 
     public IReadOnlyList<DockCommandBarDefinition> GetCommandBars()
     {

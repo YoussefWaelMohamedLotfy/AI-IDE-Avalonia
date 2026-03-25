@@ -9,10 +9,29 @@
              d:DesignWidth="400" d:DesignHeight="600"
              x:DataType="vm:Tool5ViewModel" x:CompileBindings="True">
 
-  <Grid RowDefinitions="*,Auto">
+  <Grid RowDefinitions="Auto,*,Auto">
+
+    <!-- Provider selector -->
+    <Border Grid.Row="0"
+            Padding="8,6"
+            BorderThickness="0,0,0,1"
+            BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}">
+      <Grid ColumnDefinitions="Auto,*">
+        <TextBlock Text="Provider:"
+                   VerticalAlignment="Center"
+                   FontSize="12"
+                   Opacity="0.7"
+                   Margin="0,0,8,0" />
+        <ComboBox Grid.Column="1"
+                  ItemsSource="{Binding AvailableProviders}"
+                  SelectedItem="{Binding SelectedProvider}"
+                  HorizontalAlignment="Stretch"
+                  FontSize="12" />
+      </Grid>
+    </Border>
 
     <!-- Chat message list -->
-    <ScrollViewer Grid.Row="0"
+    <ScrollViewer Grid.Row="1"
                   x:Name="MessagesScroller"
                   HorizontalScrollBarVisibility="Disabled"
                   VerticalScrollBarVisibility="Auto"
@@ -140,7 +159,7 @@
     </ScrollViewer>
 
     <!-- Input area -->
-    <Border Grid.Row="1"
+    <Border Grid.Row="2"
             BorderThickness="0,1,0,0"
             BorderBrush="{DynamicResource SystemControlForegroundBaseMediumLowBrush}"
             Padding="8">

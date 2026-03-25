@@ -98,9 +98,26 @@ public partial class Tool5ViewModel : Tool, IAsyncDisposable
         UpdateProviderLabels();
     }
 
+    [ObservableProperty]
+    private string _selectedProvider = AIProviderService.Instance.SelectedProvider;
+
+    public IReadOnlyList<string> AvailableProviders { get; } = AIProviderService.AvailableProviders;
+
+    partial void OnSelectedProviderChanged(string value)
+    {
+        if (AIProviderService.Instance.SelectedProvider != value)
+            AIProviderService.Instance.SelectedProvider = value;
+    }
+
     private void UpdateProviderLabels()
     {
-        if (AIProviderService.Instance.SelectedProvider == "Github Copilot")
+        var provider = AIProviderService.Instance.SelectedProvider;
+
+        // Keep the combo in sync if the service was changed from outside.
+        if (SelectedProvider != provider)
+            SelectedProvider = provider;
+
+        if (provider == "Github Copilot")
         {
             CurrentModelLabel = "GitHub Copilot";
             InputWatermark = "Ask GitHub Copilot anything";

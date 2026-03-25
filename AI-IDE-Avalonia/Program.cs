@@ -11,7 +11,6 @@ using Dock.Settings;
 [assembly: DockJsonSerializable(typeof(AI_IDE_Avalonia.ViewModels.Tools.Tool1ViewModel))]
 [assembly: DockJsonSerializable(typeof(AI_IDE_Avalonia.ViewModels.Tools.Tool2ViewModel))]
 [assembly: DockJsonSerializable(typeof(AI_IDE_Avalonia.ViewModels.Tools.Tool3ViewModel))]
-[assembly: DockJsonSerializable(typeof(AI_IDE_Avalonia.ViewModels.Tools.Tool4ViewModel))]
 [assembly: DockJsonSerializable(typeof(AI_IDE_Avalonia.ViewModels.Views.DashboardViewModel))]
 [assembly: DockJsonSerializable(typeof(AI_IDE_Avalonia.ViewModels.Views.HomeViewModel))]
 
