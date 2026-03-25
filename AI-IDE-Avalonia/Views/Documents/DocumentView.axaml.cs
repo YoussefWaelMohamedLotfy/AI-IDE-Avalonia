@@ -53,6 +53,7 @@ public partial class DocumentView : UserControl
         _editor.Options.ColumnRulerPositions = [80, 120];
         _editor.TextArea.IndentationStrategy = new CSharpIndentationStrategy(_editor.Options);
         _editor.TextArea.RightClickMovesCaret = true;
+        _editor.TextArea.TextView.Margin = new Thickness(6, 0, 0, 0);
 
         _editor.AddHandler(PointerWheelChangedEvent, OnEditorPointerWheel,
             RoutingStrategies.Bubble, handledEventsToo: true);
@@ -314,7 +315,23 @@ public partial class DocumentView : UserControl
         => _editor.WordWrap = _wordWrapToggle?.IsChecked == true;
 
     private void OnShowLineNumbersChanged(object? sender, RoutedEventArgs e)
-        => _editor.ShowLineNumbers = _showLineNumbersToggle?.IsChecked == true;
+    {
+        _editor.ShowLineNumbers = _showLineNumbersToggle?.IsChecked == true;
+        // AvaloniaEdit always inserts its LineNumberMargin at index 0, which pushes
+        // our BreakpointMargin to index 1. Re-pin it to the leftmost position.
+        EnsureBreakpointMarginFirst();
+    }
+
+    private void EnsureBreakpointMarginFirst()
+    {
+        var margins = _editor.TextArea.LeftMargins;
+        int idx = margins.IndexOf(_breakpointMargin);
+        if (idx > 0)
+        {
+            margins.RemoveAt(idx);
+            margins.Insert(0, _breakpointMargin);
+        }
+    }
 
     private void WireContextMenu()
     {

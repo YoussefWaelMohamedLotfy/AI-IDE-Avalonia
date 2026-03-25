@@ -74,19 +74,27 @@ public sealed class BreakpointMargin : AbstractMargin
         InvalidateVisual();
     }
 
-    protected override Size MeasureOverride(Size availableSize) => new(20, 0);
+    protected override Size MeasureOverride(Size availableSize) => new(28, 0);
 
     private int GetLineAt(PointerEventArgs e)
     {
-        double visualY = e.GetPosition(TextView).Y + TextView.VerticalOffset;
+        if (TextView is null) return -1;
+        // Use the margin's own Y coordinate — the margin and TextView share the same vertical
+        // origin in the TextArea layout, so no inter-control transform is needed.
+        double visualY = e.GetPosition(this).Y + TextView.VerticalOffset;
+        if (!TextView.VisualLinesValid) return -1;
         VisualLine? line = TextView.GetVisualLineFromVisualTop(visualY);
         return line?.FirstDocumentLine.LineNumber ?? -1;
     }
 
     protected override void OnPointerMoved(PointerEventArgs e)
     {
-        _hoverLine = GetLineAt(e);
-        InvalidateVisual();
+        int newHover = GetLineAt(e);
+        if (_hoverLine != newHover)
+        {
+            _hoverLine = newHover;
+            InvalidateVisual();
+        }
         base.OnPointerMoved(e);
     }
 
@@ -99,14 +107,19 @@ public sealed class BreakpointMargin : AbstractMargin
 
     protected override void OnPointerPressed(PointerPressedEventArgs e)
     {
-        int line = _hoverLine = GetLineAt(e);
+        int line = GetLineAt(e);
+        _hoverLine = line;
 
-        if (!_breakpointLines.Remove(line))
-            _breakpointLines.Add(line);
+        if (line >= 1)
+        {
+            if (!_breakpointLines.Remove(line))
+                _breakpointLines.Add(line);
 
-        _breakpointLines.Sort();
-        BreakpointsChanged?.Invoke(this, EventArgs.Empty);
-        InvalidateVisual();
+            _breakpointLines.Sort();
+            BreakpointsChanged?.Invoke(this, EventArgs.Empty);
+            InvalidateVisual();
+        }
+
         e.Handled = true;
         base.OnPointerPressed(e);
     }
@@ -114,6 +127,12 @@ public sealed class BreakpointMargin : AbstractMargin
     public override void Render(DrawingContext context)
     {
         context.DrawRectangle(_backgroundBrush, null, Bounds);
+
+        // Subtle separator on the right edge to visually detach gutter from line numbers / text.
+        var separatorBrush = new ImmutableSolidColorBrush(new Color(60, 128, 128, 128));
+        context.DrawLine(new ImmutablePen(separatorBrush, 1),
+            new Point(Bounds.Width - 1, 0),
+            new Point(Bounds.Width - 1, Bounds.Height));
 
         if (TextView?.VisualLinesValid == true)
         {
@@ -123,9 +142,9 @@ public sealed class BreakpointMargin : AbstractMargin
                 int lineNumber = visualLine.FirstDocumentLine.LineNumber;
 
                 if (_breakpointLines.Contains(lineNumber))
-                    context.DrawEllipse(_breakpointBrush, _breakpointPen, new Point(10, cy), 8, 8);
+                    context.DrawEllipse(_breakpointBrush, _breakpointPen, new Point(12, cy), 7, 7);
                 else if (_hoverLine == lineNumber)
-                    context.DrawEllipse(_hoverBrush, _hoverPen, new Point(10, cy), 8, 8);
+                    context.DrawEllipse(_hoverBrush, _hoverPen, new Point(12, cy), 7, 7);
             }
         }
 
