@@ -91,11 +91,13 @@ public partial class Tool5View : UserControl
         if (e.Key == Key.Up)
         {
             _vm?.NavigateHistoryUp();
+            InputBox.CaretIndex = InputBox.Text?.Length ?? 0;
             e.Handled = true;
         }
         else if (e.Key == Key.Down)
         {
             _vm?.NavigateHistoryDown();
+            InputBox.CaretIndex = InputBox.Text?.Length ?? 0;
             e.Handled = true;
         }
         else if (e.Key == Key.Escape)

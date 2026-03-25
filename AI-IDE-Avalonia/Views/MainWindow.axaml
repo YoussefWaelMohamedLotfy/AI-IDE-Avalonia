@@ -16,7 +16,8 @@
         Foreground="{DynamicResource DockThemeForegroundBrush}"
         BorderThickness="1" BorderBrush="{DynamicResource DockThemeBorderLowBrush}"
         FontFamily="Segoe UI, SF Pro Display, Noto Sans, Cantarel"
-        Title="Dock Avalonia Demo" Height="680" Width="1200"
+        Title="AI IDE" Height="680" Width="1200"
+        Icon="avares://AI-IDE-Avalonia/Assets/app-icon.ico"
         ExtendClientAreaToDecorationsHint="True"
         ExtendClientAreaChromeHints="PreferSystemChrome">
   <Window.Resources>

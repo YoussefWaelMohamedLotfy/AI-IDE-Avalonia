@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using AI_IDE_Avalonia.Models.Documents;
 using AI_IDE_Avalonia.Models.Tools;
+using AI_IDE_Avalonia.Services;
 using AI_IDE_Avalonia.ViewModels.Docks;
 using AI_IDE_Avalonia.ViewModels.Documents;
 using AI_IDE_Avalonia.ViewModels.Tools;
@@ -142,6 +143,8 @@ public class DockFactory : Factory
 
         _documentDock = documentDock;
         _rootDock = rootDock;
+
+        DocumentService.Instance.DocumentDock = documentDock;
             
         return rootDock;
     }

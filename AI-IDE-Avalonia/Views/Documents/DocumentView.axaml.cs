@@ -189,6 +189,10 @@ public partial class DocumentView : UserControl
 
         if (e.PropertyName == nameof(DocumentViewModel.SelectedLanguageExtension))
             ApplyLanguageByExtension(vm.SelectedLanguageExtension);
+
+        if (e.PropertyName == nameof(DocumentViewModel.DocumentText)
+            && vm.DocumentText != _editor.Text)
+            _editor.Text = vm.DocumentText;
     }
 
     private void ApplyViewModelState(DocumentViewModel vm)

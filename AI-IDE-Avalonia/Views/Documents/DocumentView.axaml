@@ -54,7 +54,7 @@
                            FontWeight="Light"
                            HorizontalScrollBarVisibility="Auto"
                            VerticalScrollBarVisibility="Visible"
-                           Watermark="Start typing...">
+                           Watermark=" Start typing...">
       <AvalonEdit:TextEditor.ContextFlyout>
         <MenuFlyout>
           <MenuItem Header="Cut"       InputGesture="Ctrl+X" x:Name="MenuCut"/>

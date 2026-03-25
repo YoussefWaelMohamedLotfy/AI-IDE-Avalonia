@@ -34,6 +34,8 @@ public partial class Tool5ViewModel : Tool, IAsyncDisposable
         "You have access to tools that manage the project file tree shown in the explorer panel. " +
         "Use search_tree_nodes to find nodes by name, add_tree_node to create new files or folders, " +
         "and delete_tree_node to remove nodes. " +
+        "Use write_to_document to write generated code or text directly into the editor — " +
+        "always prefer this tool when the user asks you to write, generate, or create code. " +
         "Paths use '/' as separator (e.g. 'MyAIProject/src/Agents').";
 
     /// <summary>Shared Tool1 instance wired by DockFactory; used to create AI tree tools.</summary>
@@ -156,8 +158,8 @@ public partial class Tool5ViewModel : Tool, IAsyncDisposable
             {
                 OnPostToolUse = (input, _) =>
                 {
-                    var argsJson = input.ToolArgs is null ? string.Empty
-                        : JsonSerializer.Serialize(input.ToolArgs);
+                    var argsDisplay = input.ToolArgs is null ? string.Empty
+                        : FormatToolArgsJson(input.ToolName, JsonSerializer.Serialize(input.ToolArgs));
                     var resultJson = input.ToolResult is null ? string.Empty
                         : JsonSerializer.Serialize(input.ToolResult);
 
@@ -165,7 +167,7 @@ public partial class Tool5ViewModel : Tool, IAsyncDisposable
                     {
                         IsUser = false,
                         Kind = ChatMessageKind.ToolCall,
-                        Content = $"🔧 {input.ToolName}({argsJson})\n→ {resultJson}",
+                        Content = $"🔧 {input.ToolName}({argsDisplay})\n→ {resultJson}",
                     };
                     Dispatcher.UIThread.Post(() => Messages.Add(toolMsg));
                     return Task.FromResult<PostToolUseHookOutput?>(new PostToolUseHookOutput());
@@ -354,7 +356,7 @@ public partial class Tool5ViewModel : Tool, IAsyncDisposable
                     {
                         IsUser = false,
                         Kind = ChatMessageKind.ToolCall,
-                        Content = $"🔧 {call.Name}({FormatArgs(call.Arguments)})\n→ {result}"
+                        Content = $"🔧 {call.Name}({FormatToolArgs(call.Name, call.Arguments)})\n→ {result}"
                     };
                     Messages.Add(toolMsg);
                     toolResultContents.Add(new Ai.FunctionResultContent(call.CallId, result));
@@ -414,34 +416,125 @@ public partial class Tool5ViewModel : Tool, IAsyncDisposable
     private static List<Ai.AITool> BuildTools()
     {
         var tool1 = SharedTool1;
-        return tool1 is null
-            ? []
-            : [
-            Ai.AIFunctionFactory.Create(
+        var tools = new List<Ai.AITool>();
+
+        if (tool1 is not null)
+        {
+            tools.Add(Ai.AIFunctionFactory.Create(
                 new Func<string, string>(query => tool1.SearchNodes(query)),
                 "search_tree_nodes",
                 "Search the project file tree for nodes whose name contains the given query string. " +
-                "Returns matching node paths separated by '/'."),
+                "Returns matching node paths separated by '/'."));
 
-            Ai.AIFunctionFactory.Create(
+            tools.Add(Ai.AIFunctionFactory.Create(
                 new Func<string, string, bool, string>((parentPath, nodeName, isFolder) =>
                     tool1.AddNode(parentPath, nodeName, isFolder)),
                 "add_tree_node",
                 "Add a new file or folder to the project tree. " +
                 "Use parentPath='' to add at the root level. " +
-                "Set isFolder=true to create a folder, false for a file."),
+                "Set isFolder=true to create a folder, false for a file."));
 
-            Ai.AIFunctionFactory.Create(
+            tools.Add(Ai.AIFunctionFactory.Create(
                 new Func<string, string>(nodePath => tool1.DeleteNode(nodePath)),
                 "delete_tree_node",
-                "Delete a node from the project tree by its full path (e.g. 'MyAIProject/src/Agents/ChatAgent.cs')."),
-        ];
+                "Delete a node from the project tree by its full path (e.g. 'MyAIProject/src/Agents/ChatAgent.cs')."));
+        }
+
+        tools.Add(Ai.AIFunctionFactory.Create(
+            new Func<string, string?, Task<string>>(async (text, title) =>
+            {
+                return await Dispatcher.UIThread.InvokeAsync(() =>
+                {
+                    var doc = DocumentService.Instance.GetOrCreateDocument(title);
+                    if (title is not null)
+                        doc.Title = title;
+                    doc.DocumentText = UnescapeText(text);
+                    return $"Written {doc.DocumentText.Length} characters to document '{doc.Title}'.";
+                });
+            }),
+            "write_to_document",
+            "Write or overwrite text and code in the active document editor. " +
+            "Opens a new document tab automatically if none is open. " +
+            "Provide 'title' to name the document (e.g. 'Program.cs', 'notes.md'). " +
+            "Always use this tool when the user asks you to write, generate, or create any code or text."));
+
+        return tools;
     }
 
-    private static string FormatArgs(IDictionary<string, object?>? args)
+    private static string FormatToolArgs(string toolName, IDictionary<string, object?>? args)
     {
         if (args is null or { Count: 0 }) return string.Empty;
+
+        // For write_to_document, replace the full text payload with a compact summary.
+        if (toolName == "write_to_document")
+        {
+            var parts = new List<string>();
+            foreach (var kv in args)
+            {
+                if (kv.Key == "text")
+                {
+                    var len = kv.Value?.ToString()?.Length ?? 0;
+                    parts.Add($"text: <{len} chars>");
+                }
+                else
+                {
+                    parts.Add($"{kv.Key}: {kv.Value}");
+                }
+            }
+            return string.Join(", ", parts);
+        }
+
         return string.Join(", ", args.Select(kv => $"{kv.Key}: {kv.Value}"));
+    }
+
+    /// <summary>
+    /// Same redaction logic for the Copilot path, which provides args as a JSON string.
+    /// </summary>
+    private static string FormatToolArgsJson(string toolName, string argsJson)
+    {
+        if (toolName != "write_to_document") return argsJson;
+
+        try
+        {
+            using var doc = JsonDocument.Parse(argsJson);
+            var parts = new List<string>();
+            foreach (var prop in doc.RootElement.EnumerateObject())
+            {
+                if (prop.Name == "text")
+                {
+                    var len = prop.Value.GetString()?.Length ?? 0;
+                    parts.Add($"text: <{len} chars>");
+                }
+                else
+                {
+                    parts.Add($"{prop.Name}: {prop.Value}");
+                }
+            }
+            return string.Join(", ", parts);
+        }
+        catch
+        {
+            return argsJson; // fall back to raw JSON if parsing fails
+        }
+    }
+
+    /// <summary>
+    /// Converts literal escape sequences (e.g. the two characters '\' + 'n') that some
+    /// AI models emit inside tool-call arguments into their real Unicode equivalents.
+    /// Sequences that are already proper characters are left untouched.
+    /// </summary>
+    private static string UnescapeText(string text)
+    {
+        // Fast-path: if there is no backslash at all, nothing to do.
+        if (!text.Contains('\\'))
+            return text;
+
+        return text
+            .Replace("\\r\\n", "\r\n")   // CRLF first so it isn't split by the rules below
+            .Replace("\\n", "\n")
+            .Replace("\\r", "\r")
+            .Replace("\\t", "\t")
+            .Replace("\\\\", "\\");      // un-double any escaped backslashes last
     }
 
     public async ValueTask DisposeAsync()
