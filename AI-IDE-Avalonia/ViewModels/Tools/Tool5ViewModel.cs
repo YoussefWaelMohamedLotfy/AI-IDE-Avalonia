@@ -314,6 +314,11 @@ public partial class Tool5ViewModel : Tool, IAsyncDisposable
                         {
                             pendingCalls.Add(fcc);
                         }
+                        else if (content is Ai.UsageContent uc)
+                        {
+                            assistantMsg.InputTokens = uc.Details.InputTokenCount;
+                            assistantMsg.OutputTokens = uc.Details.OutputTokenCount;
+                        }
                     }
                 }
 
@@ -390,6 +395,15 @@ public partial class Tool5ViewModel : Tool, IAsyncDisposable
                 {
                     assistantText.Append(text);
                     assistantMsg.Content = assistantText.ToString();
+                }
+
+                foreach (var content in update.Contents)
+                {
+                    if (content is Ai.UsageContent uc)
+                    {
+                        assistantMsg.InputTokens = uc.Details.InputTokenCount;
+                        assistantMsg.OutputTokens = uc.Details.OutputTokenCount;
+                    }
                 }
             }
 
