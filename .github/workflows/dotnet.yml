@@ -31,11 +31,8 @@ jobs:
     - name: Publish
       run: dotnet publish --no-restore -c Release -r win-x64 --self-contained false -o publish
 
-    - name: Zip publish output
-      run: Compress-Archive -Path publish\* -DestinationPath AI-IDE-Avalonia.zip
-
     - name: Upload artifact
       uses: actions/upload-artifact@v7
       with:
         name: AI-IDE-Avalonia
-        path: AI-IDE-Avalonia.zip
+        path: publish/
