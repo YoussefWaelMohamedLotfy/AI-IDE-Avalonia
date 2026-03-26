@@ -9,7 +9,19 @@ on:
 jobs:
   build:
 
-    runs-on: windows-latest
+    strategy:
+      matrix:
+        include:
+          - os: windows-latest
+            rid: win-x64
+            artifact-name: AI-IDE-Avalonia-win-x64
+            zip-name: AI-IDE-Avalonia-win-x64.zip
+          - os: ubuntu-latest
+            rid: linux-x64
+            artifact-name: AI-IDE-Avalonia-linux-x64
+            zip-name: AI-IDE-Avalonia-linux-x64.zip
+
+    runs-on: ${{ matrix.os }}
 
     steps:
     - uses: actions/checkout@v6
@@ -29,10 +41,14 @@ jobs:
       run: dotnet test --no-build -c Release --verbosity normal
 
     - name: Publish
-      run: dotnet publish --no-restore -c Release -r win-x64 --self-contained false -o publish
+      run: dotnet publish --no-restore -c Release -r ${{ matrix.rid }} --self-contained false -o publish
+
+    - name: Zip publish output
+      shell: pwsh
+      run: Compress-Archive -Path publish/* -DestinationPath ${{ matrix.zip-name }}
 
     - name: Upload artifact
       uses: actions/upload-artifact@v7
       with:
-        name: AI-IDE-Avalonia
-        path: publish/
+        name: ${{ matrix.artifact-name }}
+        path: ${{ matrix.zip-name }}
