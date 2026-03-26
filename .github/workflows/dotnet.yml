@@ -10,6 +10,7 @@ jobs:
   build:
 
     strategy:
+      fail-fast: false
       matrix:
         include:
           - os: windows-latest
@@ -36,7 +37,7 @@ jobs:
         dotnet-version: 10.0.x
 
     - name: Restore dependencies
-      run: dotnet restore
+      run: dotnet restore -r ${{ matrix.rid }}
 
     - name: Build
       run: dotnet build --no-restore -c Release
