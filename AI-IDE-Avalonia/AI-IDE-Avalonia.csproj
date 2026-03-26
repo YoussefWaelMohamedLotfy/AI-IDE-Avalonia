@@ -25,7 +25,7 @@
       <PrivateAssets Condition="'$(Configuration)' != 'Debug'">All</PrivateAssets>
     </PackageReference>
     <PackageReference Include="AvaloniaEdit.TextMate" Version="11.4.1" />
-    <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.1" />
+    <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.2" />
     <PackageReference Include="Dock.Avalonia" Version="11.3.11.22" />
     <PackageReference Include="Dock.Avalonia.Diagnostics" Version="11.3.11.22" />
     <PackageReference Include="Dock.Avalonia.Themes.Fluent" Version="11.3.11.22" />
@@ -34,7 +34,7 @@
     <PackageReference Include="GitHub.Copilot.SDK" Version="0.2.0" />
     <PackageReference Include="Microsoft.Agents.AI" Version="1.0.0-rc4" />
     <PackageReference Include="Microsoft.Agents.AI.GitHub.Copilot" Version="1.0.0-preview.260311.1" />
-    <PackageReference Include="OllamaSharp" Version="5.4.24" />
+    <PackageReference Include="OllamaSharp" Version="5.4.25" />
     <PackageReference Include="StaticViewLocator" Version="0.4.0">
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       <PrivateAssets>all</PrivateAssets>

@@ -10,6 +10,7 @@ using Avalonia.Styling;
 using AvaloniaEdit;
 using AvaloniaEdit.Editing;
 using AvaloniaEdit.Indentation.CSharp;
+using AvaloniaEdit.Rendering;
 using AvaloniaEdit.TextMate;
 using AI_IDE_Avalonia.Controls;
 using AI_IDE_Avalonia.ViewModels.Documents;
@@ -21,6 +22,7 @@ public partial class DocumentView : UserControl
 {
     private readonly TextEditor _editor;
     private readonly BreakpointMargin _breakpointMargin;
+    private readonly BreakpointLineHighlighter _breakpointHighlighter;
     private TextMate.Installation? _textMateInstallation;
     private RegistryOptions? _registryOptions;
     private readonly ComboBox? _languageCombo;
@@ -69,6 +71,9 @@ public partial class DocumentView : UserControl
         _breakpointMargin = new BreakpointMargin();
         _breakpointMargin.BreakpointsChanged += OnBreakpointsChanged;
         _editor.TextArea.LeftMargins.Insert(0, _breakpointMargin);
+
+        _breakpointHighlighter = new BreakpointLineHighlighter(_breakpointMargin.BreakpointLines);
+        _editor.TextArea.TextView.BackgroundRenderers.Add(_breakpointHighlighter);
 
         try
         {
@@ -164,9 +169,10 @@ public partial class DocumentView : UserControl
         if (_languageCombo is not null)
             _languageCombo.SelectionChanged -= OnLanguageComboChanged;
 
-        // 3. Remove the breakpoint margin and detach its event.
+        // 3. Remove the breakpoint margin/highlighter and detach its event.
         _breakpointMargin.BreakpointsChanged -= OnBreakpointsChanged;
         _editor.TextArea.LeftMargins.Remove(_breakpointMargin);
+        _editor.TextArea.TextView.BackgroundRenderers.Remove(_breakpointHighlighter);
 
         // 4. Dispose TextMate — releases grammar parsers and unregisters all line transformers
         //    that were registered on the editor's TextView. Without this, transformers accumulate.
@@ -303,8 +309,10 @@ public partial class DocumentView : UserControl
 
     private void OnBreakpointsChanged(object? sender, EventArgs e)
     {
-        if (_breakpointCountText is null) return;
-        _breakpointCountText.Text = $"Breakpoints: {_breakpointMargin.BreakpointLines.Count}";
+        if (_breakpointCountText is not null)
+            _breakpointCountText.Text = $"Breakpoints: {_breakpointMargin.BreakpointLines.Count}";
+
+        _editor.TextArea.TextView.InvalidateLayer(KnownLayer.Background);
     }
 
     private void OnEditorPointerWheel(object? sender, PointerWheelEventArgs e)

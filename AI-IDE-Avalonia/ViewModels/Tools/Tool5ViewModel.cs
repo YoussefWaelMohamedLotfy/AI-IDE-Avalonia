@@ -308,7 +308,8 @@ public partial class Tool5ViewModel : Tool, IAsyncDisposable
                         if (content is Ai.TextContent tc && tc.Text is { Length: > 0 })
                         {
                             assistantText.Append(tc.Text);
-                            assistantMsg.Content = assistantText.ToString();
+                            var snapshot = assistantText.ToString();
+                            Dispatcher.UIThread.Post(() => assistantMsg.Content = snapshot);
                         }
                         else if (content is Ai.FunctionCallContent fcc)
                         {
@@ -316,15 +317,29 @@ public partial class Tool5ViewModel : Tool, IAsyncDisposable
                         }
                         else if (content is Ai.UsageContent uc)
                         {
-                            assistantMsg.InputTokens = uc.Details.InputTokenCount;
-                            assistantMsg.OutputTokens = uc.Details.OutputTokenCount;
+                            var inputCount = uc.Details.InputTokenCount;
+                            var outputCount = uc.Details.OutputTokenCount;
+                            Dispatcher.UIThread.Post(() =>
+                            {
+                                assistantMsg.InputTokens = inputCount;
+                                assistantMsg.OutputTokens = outputCount;
+                            });
                         }
                     }
                 }
 
-                // If the model produced no text (only tool calls), remove the empty placeholder bubble.
-                if (assistantText.Length == 0)
+                if (assistantText.Length == 0 && pendingCalls.Count == 0)
+                {
+                    // Truly empty response — the model may still be loading on its first use.
+                    // Show an informative message instead of silently removing the bubble.
+                    Dispatcher.UIThread.Post(() =>
+                        assistantMsg.Content = "No response received. The model may still be loading — please send your message again.");
+                }
+                else if (assistantText.Length == 0)
+                {
+                    // Tool-call-only response: remove the empty placeholder bubble.
                     Dispatcher.UIThread.Post(() => Messages.Remove(assistantMsg));
+                }
 
                 var historyContents = new List<Ai.AIContent>();
                 if (assistantText.Length > 0)
@@ -421,10 +436,14 @@ public partial class Tool5ViewModel : Tool, IAsyncDisposable
 
     private void AppendErrorToLastAssistant(string message)
     {
-        var last = Messages.LastOrDefault(m => m.Kind == ChatMessageKind.Assistant);
-        last?.Content = string.IsNullOrWhiteSpace(last.Content)
+        Dispatcher.UIThread.Post(() =>
+        {
+            var last = Messages.LastOrDefault(m => m.Kind == ChatMessageKind.Assistant);
+            if (last is null) return;
+            last.Content = string.IsNullOrWhiteSpace(last.Content)
                 ? $"[Error: {message}]"
                 : last.Content + $"\n\n[Error: {message}]";
+        });
     }
 
     private static List<Ai.AITool> BuildTools()
