@@ -178,7 +178,14 @@ internal static class IdeRibbonFactory
 
     private static RibbonGroupViewModel Group(string id, string header, int order, params RibbonItemViewModel[] items)
     {
-        var group = new RibbonGroupViewModel { Id = id, Header = header, Order = order };
+        var group = new RibbonGroupViewModel
+        {
+            Id = id,
+            Header = header,
+            Order = order,
+            ItemsLayoutMode = RibbonGroupItemsLayoutMode.Stacked,
+            StackedRows = 2,
+        };
         foreach (var item in items)
             group.ItemsViewModel.Add(item);
         return group;
