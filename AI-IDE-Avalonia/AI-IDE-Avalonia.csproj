@@ -53,6 +53,8 @@
     <PackageReference Include="Microsoft.Agents.AI" Version="1.0.0-rc4" />
     <PackageReference Include="Microsoft.Agents.AI.GitHub.Copilot" Version="1.0.0-preview.260311.1" />
     <PackageReference Include="OllamaSharp" Version="5.4.25" />
+    <PackageReference Include="RibbonControl.Core" Version="0.1.0-alpha.1" />
+    <PackageReference Include="RibbonControl.Persistence.Json" Version="0.1.0-alpha.1" />
     <PackageReference Include="StaticViewLocator" Version="0.4.0">
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       <PrivateAssets>all</PrivateAssets>

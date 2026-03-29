@@ -1,6 +1,8 @@
 using Avalonia;
+using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Input;
+using Avalonia.Layout;
 using Avalonia.Markup.Xaml;
 using Dock.Avalonia.Controls;
 using Dock.Avalonia.Diagnostics.Controls;
@@ -32,14 +34,35 @@ public partial class App : Application
 
         var mainWindowViewModel = new MainWindowViewModel();
 
+        // Inject the theme preset ComboBox into the ribbon BEFORE setting DataContext.
+        // RebuildTabs() fires when the TabsSource binding resolves (on DataContext assignment),
+        // so Content must be populated beforehand or it will be cloned as null.
+        if (ThemeManager is { } themeManager)
+        {
+            var comboBox = new ComboBox
+            {
+                Width = 160,
+                Height = 24,
+                FontSize = 11,
+                Padding = new Thickness(6, 2),
+                VerticalAlignment = VerticalAlignment.Center,
+            };
+            comboBox.ItemsSource = themeManager.PresetNames;
+            comboBox.SelectedIndex = themeManager.CurrentPresetIndex;
+            comboBox.SelectionChanged += (_, _) =>
+            {
+                if (comboBox.SelectedIndex >= 0)
+                    themeManager.SwitchPreset(comboBox.SelectedIndex);
+            };
+            IdeRibbonFactory.SetThemeContent(mainWindowViewModel.Ribbon, comboBox);
+        }
+
         switch (ApplicationLifetime)
         {
             case IClassicDesktopStyleApplicationLifetime desktopLifetime:
             {
-                var mainWindow = new MainWindow
-                {
-                    DataContext = mainWindowViewModel
-                };
+                var mainWindow = new MainWindow();
+                mainWindow.DataContext = mainWindowViewModel;
 
 #if DEBUG
                 mainWindow.AttachDockDebug(() => mainWindowViewModel.Layout, new KeyGesture(Key.F11));
@@ -62,10 +85,8 @@ public partial class App : Application
             }
             case ISingleViewApplicationLifetime singleViewLifetime:
             {
-                var mainView = new MainView()
-                {
-                    DataContext = mainWindowViewModel
-                };
+                var mainView = new MainView();
+                mainView.DataContext = mainWindowViewModel;
 
                 singleViewLifetime.MainView = mainView;
 

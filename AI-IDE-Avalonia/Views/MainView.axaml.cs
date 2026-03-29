@@ -4,7 +4,6 @@ using System.Linq;
 using System.Threading.Tasks;
 using Avalonia;
 using Avalonia.Controls;
-using Avalonia.Interactivity;
 using Avalonia.Markup.Xaml;
 using Avalonia.Platform.Storage;
 using Avalonia.Styling;
@@ -25,36 +24,22 @@ public partial class MainView : UserControl
     public MainView()
     {
         InitializeComponent();
-        InitializeThemes();
+        _isDark = Application.Current?.RequestedThemeVariant == ThemeVariant.Dark;
         InitializeDockState();
+        DataContextChanged += OnDataContextChanged;
     }
-    
-    private void InitializeThemes()
+
+    private bool _isDark;
+
+    private void OnDataContextChanged(object? sender, EventArgs e)
     {
-        var themeManager = App.ThemeManager;
-        var dark = Application.Current?.RequestedThemeVariant == ThemeVariant.Dark;
-
-        if (ThemeButton is not null && themeManager is not null)
+        if (DataContext is not MainWindowViewModel vm) return;
+        vm.WireLayoutIO(() => OpenLayout(), () => SaveLayout(), CloseLayout);
+        vm.WireToggleTheme(() =>
         {
-            ThemeButton.Click += (_, _) =>
-            {
-                dark = !dark;
-                themeManager.Switch(dark ? 1 : 0);
-            };
-        }
-
-        if (PresetComboBox is not null && themeManager is not null)
-        {
-            PresetComboBox.ItemsSource = themeManager.PresetNames;
-            PresetComboBox.SelectedIndex = themeManager.CurrentPresetIndex;
-            PresetComboBox.SelectionChanged += (_, _) =>
-            {
-                if (PresetComboBox.SelectedIndex >= 0)
-                {
-                    themeManager.SwitchPreset(PresetComboBox.SelectedIndex);
-                }
-            };
-        }
+            _isDark = !_isDark;
+            App.ThemeManager?.Switch(_isDark ? 1 : 0);
+        });
     }
 
     private void InitializeDockState()
@@ -166,20 +151,5 @@ public partial class MainView : UserControl
             mainWindowViewModel.CloseLayout();
             mainWindowViewModel.Layout = null;
         }
-    }
-
-    private async void FileOpenLayout_OnClick(object? sender, RoutedEventArgs e)
-    {
-        await OpenLayout();
-    }
-
-    private async void FileSaveLayout_OnClick(object? sender, RoutedEventArgs e)
-    {
-        await SaveLayout();
-    }
-
-    private void FileCloseLayout_OnClick(object? sender, RoutedEventArgs e)
-    {
-        CloseLayout();
     }
 }

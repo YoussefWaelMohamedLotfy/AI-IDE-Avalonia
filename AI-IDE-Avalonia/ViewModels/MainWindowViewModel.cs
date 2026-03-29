@@ -1,10 +1,19 @@
+using System;
+using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.Diagnostics;
+using System.Threading.Tasks;
 using System.Windows.Input;
 using AI_IDE_Avalonia.Models;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Dock.Model.Controls;
 using Dock.Model.Core;
+using RibbonControl.Core.Contracts;
+using RibbonControl.Core.Enums;
+using RibbonControl.Core.Models;
+using RibbonControl.Core.Services;
+using RibbonControl.Core.ViewModels;
 
 namespace AI_IDE_Avalonia.ViewModels;
 
@@ -13,6 +22,17 @@ public partial class MainWindowViewModel : ObservableObject
     private readonly IFactory? _factory;
     private IRootDock? _layout;
     private string _globalStatus = "Global: (none)";
+    private readonly DictionaryRibbonCommandCatalog _catalogImpl;
+
+    // Delegates set lazily by the view once it has a visual root (required for file dialogs / theme).
+    private Func<Task>? _openLayoutFunc;
+    private Func<Task>? _saveLayoutFunc;
+    private Action? _closeLayoutFunc;
+    private Action? _toggleThemeAction;
+
+    [ObservableProperty] private bool _isBackstageOpen;
+    [ObservableProperty] private RibbonQuickAccessPlacement _quickAccessPlacement = RibbonQuickAccessPlacement.Above;
+    [ObservableProperty] private RibbonStateOwnershipMode _stateOwnershipMode = RibbonStateOwnershipMode.Synchronized;
 
     public IRootDock? Layout
     {
@@ -27,6 +47,13 @@ public partial class MainWindowViewModel : ObservableObject
     }
 
     public ICommand NewLayout { get; }
+
+    public RibbonViewModel Ribbon { get; }
+    public IRibbonCommandCatalog CommandCatalog => _catalogImpl;
+    public IRibbonStateStore StateStore { get; }
+    public ObservableCollection<RibbonItem> QuickAccessItems { get; }
+    public ObservableCollection<RibbonBackstageItem> BackstageItems { get; }
+    public IReadOnlyList<string> ActiveContextGroupIds { get; } = [];
 
     public MainWindowViewModel()
     {
@@ -50,7 +77,47 @@ public partial class MainWindowViewModel : ObservableObject
         }
 
         NewLayout = new RelayCommand(ResetLayout);
+
+        Ribbon = IdeRibbonFactory.BuildRibbon();
+        _catalogImpl = IdeRibbonFactory.BuildCommandCatalog(id => GlobalStatus = $"Ribbon: {id}");
+
+        // Navigation commands
+        _catalogImpl.Register("nav-back",      new RelayCommand(() => Layout?.GoBack?.Execute(null)));
+        _catalogImpl.Register("nav-forward",   new RelayCommand(() => Layout?.GoForward?.Execute(null)));
+        _catalogImpl.Register("nav-dashboard", new RelayCommand(() => Layout?.Navigate?.Execute("Dashboard")));
+        _catalogImpl.Register("nav-home",      new RelayCommand(() => Layout?.Navigate?.Execute(Layout?.DefaultDockable)));
+
+        // Dock layout commands — file I/O delegates set later via WireLayoutIO (need visual root).
+        _catalogImpl.Register("layout-new",   new RelayCommand(ResetLayout));
+        _catalogImpl.Register("layout-open",  new AsyncRelayCommand(() => _openLayoutFunc?.Invoke()  ?? Task.CompletedTask));
+        _catalogImpl.Register("layout-save",  new AsyncRelayCommand(() => _saveLayoutFunc?.Invoke()  ?? Task.CompletedTask));
+        _catalogImpl.Register("layout-close", new RelayCommand(()         => _closeLayoutFunc?.Invoke()));
+
+        // Window commands
+        _catalogImpl.Register("layout-exit-windows", new RelayCommand(() => Layout?.ExitWindows?.Execute(null)));
+        _catalogImpl.Register("layout-show-windows", new RelayCommand(() => Layout?.ShowWindows?.Execute(null)));
+
+        // Theme toggle — delegate set later via WireToggleTheme.
+        _catalogImpl.Register("toggle-theme", new RelayCommand(() => _toggleThemeAction?.Invoke()));
+
+        StateStore = new InMemoryRibbonStateStore();
+        QuickAccessItems = IdeRibbonFactory.BuildQuickAccessItems();
+        BackstageItems = IdeRibbonFactory.BuildBackstageItems(
+            newCmd:     new RelayCommand(() => { GlobalStatus = "Ribbon: New File";  IsBackstageOpen = false; }),
+            openCmd:    new RelayCommand(() => { GlobalStatus = "Ribbon: Open File"; IsBackstageOpen = false; }),
+            saveCmd:    new RelayCommand(() => { GlobalStatus = "Ribbon: Save";      IsBackstageOpen = false; }),
+            saveAllCmd: new RelayCommand(() => { GlobalStatus = "Ribbon: Save All";  IsBackstageOpen = false; })
+        );
     }
+
+    internal void WireLayoutIO(Func<Task> open, Func<Task> save, Action close)
+    {
+        _openLayoutFunc  = open;
+        _saveLayoutFunc  = save;
+        _closeLayoutFunc = close;
+    }
+
+    internal void WireToggleTheme(Action toggleTheme) => _toggleThemeAction = toggleTheme;
 
     public void InitLayout()
     {
