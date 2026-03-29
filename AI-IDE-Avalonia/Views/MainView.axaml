@@ -29,7 +29,8 @@
       SelectedTabId="{CompiledBinding Ribbon.SelectedTabId, Mode=TwoWay}"
       IsMinimized="{CompiledBinding Ribbon.IsMinimized, Mode=TwoWay}"
       IsKeyTipMode="{CompiledBinding Ribbon.IsKeyTipMode, Mode=TwoWay}"
-      EnableAdaptiveLayout="True">
+      EnableAdaptiveLayout="True"
+      MaintainStableRibbonHeight="False">
       <ribbon:Ribbon.Backstage>
         <ribbon:RibbonBackstage
           IsOpen="{CompiledBinding IsBackstageOpen, Mode=TwoWay}"
