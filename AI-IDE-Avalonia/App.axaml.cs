@@ -149,6 +149,7 @@ public partial class App : Application
                 desktopLifetime.TryShutdown();
             });
             splashViewModel.Dispose();
+            workspaceViewModel.Dispose();
             return;
         }
 
@@ -199,5 +200,6 @@ public partial class App : Application
         });
 
         splashViewModel.Dispose();
+        workspaceViewModel.Dispose();
     }
 }

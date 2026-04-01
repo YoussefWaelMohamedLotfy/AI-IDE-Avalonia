@@ -8,7 +8,7 @@ using CommunityToolkit.Mvvm.Input;
 
 namespace AI_IDE_Avalonia.ViewModels;
 
-public partial class WorkspaceSelectorViewModel : ViewModelBase
+public partial class WorkspaceSelectorViewModel : ViewModelBase, IDisposable
 {
     private readonly RecentFoldersService _service = new();
     private readonly TaskCompletionSource<string?> _tcs =
@@ -73,4 +73,6 @@ public partial class WorkspaceSelectorViewModel : ViewModelBase
         _service.Add(path);
         _tcs.TrySetResult(path);
     }
+
+    public void Dispose() => _folderPickerFunc = null;
 }
