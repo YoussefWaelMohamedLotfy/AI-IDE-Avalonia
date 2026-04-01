@@ -38,7 +38,6 @@ public class TextInputTests(HeadlessTestFixture fixture)
             var textBox = new TextBox { Text = "Initial text" };
             window.Content = textBox;
             window.Show();
-            window.RunJobs();
 
             textBox.Focus();
             window.KeyPressQwerty(PhysicalKey.A, RawInputModifiers.Control);
