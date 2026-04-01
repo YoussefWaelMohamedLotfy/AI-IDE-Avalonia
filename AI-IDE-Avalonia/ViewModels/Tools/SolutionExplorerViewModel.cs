@@ -7,8 +7,10 @@ using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using AI_IDE_Avalonia.Collections;
 using AI_IDE_Avalonia.Models;
 using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
 using Dock.Model.Mvvm.Controls;
 
 namespace AI_IDE_Avalonia.ViewModels.Tools;
@@ -21,7 +23,15 @@ public partial class SolutionExplorerViewModel : Tool
     [ObservableProperty]
     private string _filterText = string.Empty;
 
-    public ObservableCollection<TreeNode> FilteredNodes { get; } = new();
+    [ObservableProperty]
+    private int _totalNodeCount;
+
+    public int SelectedNodeCount => SelectedNodes.Count;
+
+    /// <summary>True when more than one node is selected; drives the selected-count label visibility.</summary>
+    public bool HasMultipleSelected => SelectedNodes.Count > 1;
+
+    public BulkObservableCollection<TreeNode> FilteredNodes { get; } = new();
     public ObservableCollection<TreeNode> SelectedNodes { get; } = new();
 
     public SolutionExplorerViewModel()
@@ -29,6 +39,12 @@ public partial class SolutionExplorerViewModel : Tool
         // Observe the sample-data nodes so expand/collapse works for design-time preview.
         foreach (var node in _allNodes)
             ObserveNode(node);
+
+        SelectedNodes.CollectionChanged += (_, _) =>
+        {
+            OnPropertyChanged(nameof(SelectedNodeCount));
+            OnPropertyChanged(nameof(HasMultipleSelected));
+        };
 
         ApplyFilter();
     }
@@ -65,21 +81,28 @@ public partial class SolutionExplorerViewModel : Tool
 
         if (string.IsNullOrEmpty(filter))
         {
-            FilteredNodes.Clear();
-            foreach (var node in _allNodes)
-                FilteredNodes.Add(node);
+            FilteredNodes.Reset(_allNodes);
+            TotalNodeCount = CountNodes(_allNodes);
             return;
         }
 
         // Snapshot _allNodes on the UI thread before handing off to the thread pool.
         var roots = _allNodes.ToList();
 
-        List<TreeNode?> results;
+        List<TreeNode> results;
         try
         {
-            results = await Task.Run(
-                () => roots.Select(n => FilterNodeDeep(n, filter, ct)).ToList(),
-                ct);
+            results = await Task.Run(() =>
+            {
+                var list = new List<TreeNode>();
+                foreach (var n in roots)
+                {
+                    ct.ThrowIfCancellationRequested();
+                    var r = FilterNodeDeep(n, filter, ct);
+                    if (r is not null) list.Add(r);
+                }
+                return list;
+            }, ct);
         }
         catch (OperationCanceledException)
         {
@@ -90,13 +113,13 @@ public partial class SolutionExplorerViewModel : Tool
         // discard the stale results so the next scheduled run takes over cleanly.
         if (ct.IsCancellationRequested) return;
 
-        FilteredNodes.Clear();
-        foreach (var result in results)
-            if (result is not null)
-            {
-                ExpandAll(result);
-                FilteredNodes.Add(result);
-            }
+        // Expand all result nodes, then push the whole list to the UI in one Reset
+        // to fire a single CollectionChanged notification instead of one per item.
+        foreach (var node in results)
+            ExpandAll(node);
+
+        FilteredNodes.Reset(results);
+        TotalNodeCount = CountNodes(results);
     }
 
     /// <summary>Recursively expands all folder nodes in a filter-result subtree.</summary>
@@ -508,6 +531,20 @@ public partial class SolutionExplorerViewModel : Tool
 
     // ── Private helpers ────────────────────────────────────────────────────────
 
+    /// <summary>Recursively counts all non-placeholder nodes in <paramref name="nodes"/>.</summary>
+    private static int CountNodes(IEnumerable<TreeNode> nodes)
+    {
+        int count = 0;
+        foreach (var node in nodes)
+        {
+            if (node.IsLoadingPlaceholder) continue;
+            count++;
+            if (node.Children is { Count: > 0 })
+                count += CountNodes(node.Children);
+        }
+        return count;
+    }
+
     private static void CollectMatchingPaths(TreeNode node, string query, string currentPath, List<string> results)
     {
         if (node.IsLoadingPlaceholder) return;
@@ -527,5 +564,148 @@ public partial class SolutionExplorerViewModel : Tool
         if (pathParts.Length == 1) return current;
         if (current.Children is null) return null;
         return FindNode(current.Children, pathParts[1..]);
+    }
+
+    // ── Context-menu state ────────────────────────────────────────────────────
+
+    private TreeNode? _nodeClipboard;
+    private bool _nodeClipboardIsCut;
+
+    /// <summary>Avalonia clipboard service — set by the View after attaching to the visual tree.</summary>
+    public Avalonia.Input.Platform.IClipboard? SystemClipboard { get; set; }
+
+    // ── Context-menu commands ─────────────────────────────────────────────────
+
+    [RelayCommand]
+    private void OpenNode(TreeNode? node)
+    {
+        if (node is null || node.IsLoadingPlaceholder) return;
+        if (node.IsFolder) { node.IsExpanded = !node.IsExpanded; return; }
+        // TODO: open in document editor
+        System.Diagnostics.Debug.WriteLine($"[SolutionExplorer] Open: {node.FullPath ?? node.Name}");
+    }
+
+    [RelayCommand]
+    private void OpenContainingFolder(TreeNode? node)
+    {
+        if (node is null) return;
+        var path = node.IsFolder ? node.FullPath : Path.GetDirectoryName(node.FullPath);
+        if (string.IsNullOrEmpty(path)) return;
+        try
+        {
+            System.Diagnostics.Process.Start(
+                new System.Diagnostics.ProcessStartInfo("explorer.exe", $"\"{path}\"")
+                { UseShellExecute = true });
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[SolutionExplorer] OpenContainingFolder: {ex.Message}");
+        }
+    }
+
+    [RelayCommand]
+    private async Task CopyFullPath(TreeNode? node)
+    {
+        if (node?.FullPath is null || SystemClipboard is null) return;
+        await SystemClipboard.SetTextAsync(node.FullPath);
+    }
+
+    [RelayCommand]
+    private void AddNewFile(TreeNode? node)
+    {
+        if (node is null || !node.IsFolder) return;
+        const string name = "NewFile.cs";
+        node.Children?.Add(new TreeNode(
+            name, isFolder: false,
+            fullPath: node.FullPath is not null ? Path.Combine(node.FullPath, name) : null));
+        node.IsExpanded = true;
+        ApplyFilter();
+    }
+
+    [RelayCommand]
+    private void AddNewFolder(TreeNode? node)
+    {
+        if (node is null || !node.IsFolder) return;
+        const string name = "NewFolder";
+        node.Children?.Add(new TreeNode(
+            name, isFolder: true,
+            children: new ObservableCollection<TreeNode>(),
+            fullPath: node.FullPath is not null ? Path.Combine(node.FullPath, name) : null,
+            childrenLoaded: true));
+        node.IsExpanded = true;
+        ApplyFilter();
+    }
+
+    [RelayCommand]
+    private void AddExistingFile(TreeNode? node)
+    {
+        if (node is null || !node.IsFolder) return;
+        // TODO: open StorageProvider file picker
+        System.Diagnostics.Debug.WriteLine($"[SolutionExplorer] AddExistingFile to: {node.FullPath}");
+    }
+
+    [RelayCommand]
+    private void CutNode(TreeNode? node)
+    {
+        if (node is null || node.IsLoadingPlaceholder) return;
+        _nodeClipboard = node;
+        _nodeClipboardIsCut = true;
+    }
+
+    [RelayCommand]
+    private void CopyNode(TreeNode? node)
+    {
+        if (node is null || node.IsLoadingPlaceholder) return;
+        _nodeClipboard = node;
+        _nodeClipboardIsCut = false;
+    }
+
+    [RelayCommand]
+    private void PasteNode(TreeNode? node)
+    {
+        if (_nodeClipboard is null || node is null || !node.IsFolder) return;
+        node.Children?.Add(new TreeNode(
+            _nodeClipboard.Name, _nodeClipboard.IsFolder,
+            _nodeClipboard.IsFolder ? new ObservableCollection<TreeNode>() : null,
+            _nodeClipboard.FullPath, _nodeClipboard.ChildrenLoaded));
+        if (_nodeClipboardIsCut)
+        {
+            RemoveNodeFromTree(_nodeClipboard, _allNodes);
+            _nodeClipboard = null;
+        }
+        node.IsExpanded = true;
+        ApplyFilter();
+    }
+
+    [RelayCommand]
+    private void RenameNode(TreeNode? node)
+    {
+        // TODO: trigger inline rename
+        System.Diagnostics.Debug.WriteLine($"[SolutionExplorer] Rename: {node?.Name}");
+    }
+
+    [RelayCommand]
+    private void RemoveNode(TreeNode? node)
+    {
+        if (node is null || node.IsLoadingPlaceholder) return;
+        if (RemoveNodeFromTree(node, _allNodes))
+            ApplyFilter();
+    }
+
+    [RelayCommand]
+    private void ShowProperties(TreeNode? node)
+    {
+        // TODO: show properties panel
+        System.Diagnostics.Debug.WriteLine($"[SolutionExplorer] Properties: {node?.FullPath ?? node?.Name}");
+    }
+
+    private static bool RemoveNodeFromTree(TreeNode target, IList<TreeNode> nodes)
+    {
+        for (int i = 0; i < nodes.Count; i++)
+        {
+            if (ReferenceEquals(nodes[i], target)) { nodes.RemoveAt(i); return true; }
+            if (nodes[i].Children is { } ch && RemoveNodeFromTree(target, ch)) return true;
+        }
+        return false;
     }
 }
