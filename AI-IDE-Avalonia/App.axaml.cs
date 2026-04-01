@@ -4,6 +4,7 @@ using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Input;
 using Avalonia.Layout;
 using Avalonia.Markup.Xaml;
+using Avalonia.Threading;
 using Dock.Avalonia.Controls;
 using Dock.Avalonia.Diagnostics.Controls;
 using Dock.Avalonia.Diagnostics;
@@ -11,6 +12,9 @@ using Dock.Avalonia.Themes;
 using Dock.Avalonia.Themes.Fluent;
 using AI_IDE_Avalonia.ViewModels;
 using AI_IDE_Avalonia.Views;
+using System;
+using System.Threading.Tasks;
+using System.Threading;
 
 namespace AI_IDE_Avalonia;
 
@@ -61,26 +65,19 @@ public partial class App : Application
         {
             case IClassicDesktopStyleApplicationLifetime desktopLifetime:
             {
-                var mainWindow = new MainWindow();
-                mainWindow.DataContext = mainWindowViewModel;
-
-#if DEBUG
-                mainWindow.AttachDockDebug(() => mainWindowViewModel.Layout, new KeyGesture(Key.F11));
-                mainWindow.AttachDockDebugOverlay(new KeyGesture(Key.F9));
-#endif
-
-                mainWindow.Closing += (_, _) =>
+                var splashViewModel = new SplashScreenViewModel();
+                var splashWindow = new SplashScreenWindow
                 {
-                    mainWindowViewModel.CloseLayout();
+                    DataContext = splashViewModel,
                 };
 
-                desktopLifetime.MainWindow = mainWindow;
+                desktopLifetime.MainWindow = splashWindow;
+                splashWindow.Show();
 
-                desktopLifetime.Exit += (_, _) =>
-                {
-                    mainWindowViewModel.CloseLayout();
-                };
-                    
+                // Run background start-up work, then swap to the main window.
+                _ = RunStartupAndOpenMainWindowAsync(
+                    desktopLifetime, splashWindow, splashViewModel, mainWindowViewModel);
+
                 break;
             }
             case ISingleViewApplicationLifetime singleViewLifetime:
@@ -98,5 +95,57 @@ public partial class App : Application
 #if DEBUG
         this.AttachDevTools();
 #endif
+    }
+
+    private static async Task RunStartupAndOpenMainWindowAsync(
+        IClassicDesktopStyleApplicationLifetime desktopLifetime,
+        SplashScreenWindow splashWindow,
+        SplashScreenViewModel splashViewModel,
+        MainWindowViewModel mainWindowViewModel)
+    {
+        try
+        {
+            // Perform background initialisation while the splash is visible.
+            await splashViewModel.RunStartupTasksAsync(splashViewModel.CancellationToken);
+        }
+        catch (OperationCanceledException)
+        {
+            // User pressed Exit — close the splash and shut the application down cleanly.
+            await Dispatcher.UIThread.InvokeAsync(() =>
+            {
+                splashWindow.Close();
+                desktopLifetime.TryShutdown();
+            });
+            splashViewModel.Dispose();
+            return;
+        }
+        catch (Exception ex)
+        {
+            // Unexpected failure during startup — log and still open the main window.
+            System.Diagnostics.Trace.TraceError($"Splash startup error: {ex}");
+        }
+
+        // All work is done — switch to the main window on the UI thread.
+        await Dispatcher.UIThread.InvokeAsync(() =>
+        {
+            var mainWindow = new MainWindow();
+            mainWindow.DataContext = mainWindowViewModel;
+
+#if DEBUG
+            mainWindow.AttachDockDebug(() => mainWindowViewModel.Layout, new KeyGesture(Key.F11));
+            mainWindow.AttachDockDebugOverlay(new KeyGesture(Key.F9));
+#endif
+
+            mainWindow.Closing += (_, _) => mainWindowViewModel.CloseLayout();
+
+            desktopLifetime.Exit += (_, _) => mainWindowViewModel.CloseLayout();
+
+            desktopLifetime.MainWindow = mainWindow;
+            mainWindow.Show();
+
+            splashWindow.Close();
+        });
+
+        splashViewModel.Dispose();
     }
 }
