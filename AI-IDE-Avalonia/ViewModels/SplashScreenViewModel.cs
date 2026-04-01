@@ -49,7 +49,7 @@ public partial class SplashScreenViewModel : ViewModelBase, IDisposable
         {
             cancellationToken.ThrowIfCancellationRequested();
             LoadingMessage = message;
-            await Task.Delay(1500, cancellationToken);
+            await Task.Delay(1000, cancellationToken);
             Progress = progressAfter;
         }
     }

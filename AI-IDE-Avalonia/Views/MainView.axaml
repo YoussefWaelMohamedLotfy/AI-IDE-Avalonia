@@ -15,6 +15,22 @@
   <UserControl.Resources>
     <StreamGeometry x:Key="DarkTheme">M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10Zm0-2V4a8 8 0 1 1 0 16Z</StreamGeometry>
   </UserControl.Resources>
+ <UserControl.Styles>
+   <!-- Hide the top chrome bar — empty when not using custom TopBar content -->
+   <Style Selector="ribbon|Ribbon /template/ DockPanel#PART_TopBar">
+     <Setter Property="IsVisible" Value="False" />
+   </Style>
+   <!-- Hide the QAT/backstage row — backstage removed and QAT is placed Below -->
+   <Style Selector="ribbon|Ribbon /template/ DockPanel#PART_QuickAccessTopRow">
+     <Setter Property="IsVisible" Value="False" />
+   </Style>
+   <Style Selector="ribbon|Ribbon /template/ Button#PART_BackstageButtonTop">
+     <Setter Property="IsVisible" Value="False" />
+   </Style>
+   <Style Selector="ribbon|Ribbon /template/ Button#PART_BackstageButtonBottom">
+     <Setter Property="IsVisible" Value="False" />
+   </Style>
+ </UserControl.Styles>
   <Grid RowDefinitions="Auto,*,Auto" Background="Transparent">
     <!-- Row 0: Ribbon -->
     <ribbon:Ribbon Grid.Row="0"
@@ -31,11 +47,11 @@
       IsKeyTipMode="{CompiledBinding Ribbon.IsKeyTipMode, Mode=TwoWay}"
       EnableAdaptiveLayout="True"
       MaintainStableRibbonHeight="False">
-      <ribbon:Ribbon.Backstage>
+      <!--<ribbon:Ribbon.Backstage>
         <ribbon:RibbonBackstage
           IsOpen="{CompiledBinding IsBackstageOpen, Mode=TwoWay}"
           ItemsSource="{CompiledBinding BackstageItems}" />
-      </ribbon:Ribbon.Backstage>
+      </ribbon:Ribbon.Backstage>-->
     </ribbon:Ribbon>
     <!-- Row 1: Dock area -->
     <DockControl x:Name="DockControl" Layout="{Binding Layout}" Margin="4" Grid.Row="1" />

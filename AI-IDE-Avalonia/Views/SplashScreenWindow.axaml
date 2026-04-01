@@ -47,7 +47,7 @@
                  Width="64" Height="64"
                  HorizontalAlignment="Center" />
 
-          <TextBlock Text="AI IDE"
+          <TextBlock Text="Avalonia AI IDE"
                      FontSize="28"
                      FontWeight="Bold"
                      Foreground="White"
