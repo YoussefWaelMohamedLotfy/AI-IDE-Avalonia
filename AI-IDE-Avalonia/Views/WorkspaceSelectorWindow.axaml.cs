@@ -3,6 +3,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using Avalonia.Controls;
 using Avalonia.Input;
+using Avalonia.Media;
 using Avalonia.Platform.Storage;
 using AI_IDE_Avalonia.ViewModels;
 
@@ -10,9 +11,14 @@ namespace AI_IDE_Avalonia.Views;
 
 public partial class WorkspaceSelectorWindow : Window
 {
+    private static readonly SolidColorBrush BorderActive   = new(Color.Parse("#9184EE"));
+    private static readonly SolidColorBrush BorderInactive = new(Color.Parse("#33FFFFFF"));
+
     public WorkspaceSelectorWindow()
     {
         InitializeComponent();
+        Activated   += (_, _) => WindowBorder.BorderBrush = BorderActive;
+        Deactivated += (_, _) => WindowBorder.BorderBrush = BorderInactive;
     }
 
     protected override void OnDataContextChanged(EventArgs e)

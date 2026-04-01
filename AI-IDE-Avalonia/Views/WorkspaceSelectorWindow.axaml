@@ -31,7 +31,8 @@
                                Material="{StaticResource WorkspaceAcrylic}"
                                CornerRadius="12" />
 
-    <Border CornerRadius="12"
+    <Border x:Name="WindowBorder"
+            CornerRadius="12"
             BorderThickness="1"
             BorderBrush="#33FFFFFF">
 
