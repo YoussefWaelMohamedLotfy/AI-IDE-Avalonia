@@ -12,7 +12,9 @@ using Dock.Avalonia.Themes;
 using Dock.Avalonia.Themes.Fluent;
 using AI_IDE_Avalonia.ViewModels;
 using AI_IDE_Avalonia.Views;
+using System;
 using System.Threading.Tasks;
+using System.Threading;
 
 namespace AI_IDE_Avalonia;
 
@@ -101,8 +103,27 @@ public partial class App : Application
         SplashScreenViewModel splashViewModel,
         MainWindowViewModel mainWindowViewModel)
     {
-        // Perform background initialisation while the splash is visible.
-        await splashViewModel.RunStartupTasksAsync();
+        try
+        {
+            // Perform background initialisation while the splash is visible.
+            await splashViewModel.RunStartupTasksAsync(splashViewModel.CancellationToken);
+        }
+        catch (OperationCanceledException)
+        {
+            // User pressed Exit — close the splash and shut the application down cleanly.
+            await Dispatcher.UIThread.InvokeAsync(() =>
+            {
+                splashWindow.Close();
+                desktopLifetime.TryShutdown();
+            });
+            splashViewModel.Dispose();
+            return;
+        }
+        catch (Exception ex)
+        {
+            // Unexpected failure during startup — log and still open the main window.
+            System.Diagnostics.Trace.TraceError($"Splash startup error: {ex}");
+        }
 
         // All work is done — switch to the main window on the UI thread.
         await Dispatcher.UIThread.InvokeAsync(() =>
@@ -124,5 +145,7 @@ public partial class App : Application
 
             splashWindow.Close();
         });
+
+        splashViewModel.Dispose();
     }
 }

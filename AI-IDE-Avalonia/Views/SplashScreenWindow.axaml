@@ -79,12 +79,25 @@
                    Margin="0,0,0,0" />
 
         <!-- Version / copyright footer -->
-        <TextBlock Grid.Row="4"
-                   Text="© 2025 AI IDE Avalonia"
-                   FontSize="10"
-                   Foreground="#66FFFFFF"
-                   HorizontalAlignment="Right"
-                   VerticalAlignment="Bottom" />
+        <Grid Grid.Row="4" ColumnDefinitions="Auto,*,Auto" VerticalAlignment="Bottom">
+          <Button Grid.Column="0"
+                  Command="{Binding ExitCommand}"
+                  Content="✕  Exit"
+                  FontSize="10"
+                  Padding="8,2"
+                  CornerRadius="4"
+                  Foreground="#CCCCDD"
+                  Background="#33FFFFFF"
+                  BorderThickness="0"
+                  Cursor="Hand" />
+
+          <TextBlock Grid.Column="2"
+                     Text="© 2025 AI IDE Avalonia"
+                     FontSize="10"
+                     Foreground="#66FFFFFF"
+                     HorizontalAlignment="Right"
+                     VerticalAlignment="Center" />
+        </Grid>
       </Grid>
     </Border>
   </Panel>
