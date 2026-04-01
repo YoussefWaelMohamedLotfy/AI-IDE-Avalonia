@@ -43,29 +43,63 @@
               SelectedItems="{Binding SelectedNodes}"
               SelectionMode="Single">
       <TreeView.Styles>
+        <!--
+          Bind TreeViewItem.IsExpanded to TreeNode.IsExpanded so that:
+          • programmatic changes (e.g. root=true, Collapse All) are reflected visually;
+          • user-initiated expand/collapse is round-tripped back to the model via
+            the ExpandedEvent / CollapsedEvent handlers in the code-behind.
+        -->
         <Style Selector="TreeViewItem">
-          <Setter Property="IsExpanded" Value="True" />
+          <Setter Property="IsExpanded" Value="{ReflectionBinding IsExpanded}" />
         </Style>
       </TreeView.Styles>
       <TreeView.ItemTemplate>
         <TreeDataTemplate x:DataType="models:TreeNode" ItemsSource="{Binding Children}">
-          <StackPanel Orientation="Horizontal" Spacing="5">
+          <Grid>
 
-            <!-- Folder icon -->
-            <PathIcon Width="14" Height="14"
-                      IsVisible="{Binding IsFolder}"
-                      Data="M2 6C2 4.895 2.895 4 4 4H7.172C7.702 4 8.21 4.21 8.586 4.586L9.414 5.414C9.789 5.789 10.298 6 10.828 6H12C13.105 6 14 6.895 14 8V12C14 13.105 13.105 14 12 14H4C2.895 14 2 13.105 2 12V6Z" />
+            <!-- ── Loading placeholder row ───────────────────────────── -->
+            <StackPanel Orientation="Horizontal" Spacing="5"
+                        IsVisible="{Binding IsLoadingPlaceholder}"
+                        Opacity="0.55">
+              <ProgressBar IsIndeterminate="True"
+                           Width="12" Height="12"
+                           VerticalAlignment="Center" />
+              <TextBlock Text="Loading…"
+                         FontStyle="Italic"
+                         VerticalAlignment="Center" />
+            </StackPanel>
 
-            <!-- File icon -->
-            <PathIcon Width="14" Height="14"
-                      IsVisible="{Binding IsFolder, Converter={x:Static BoolConverters.Not}}"
-                      Data="M4 2C2.895 2 2 2.895 2 4V12C2 13.105 2.895 14 4 14H12C13.105 14 14 13.105 14 12V6.414C14 5.884 13.789 5.375 13.414 5L11 2.586C10.625 2.211 10.116 2 9.586 2H4Z" />
+            <!-- ── Normal node row ───────────────────────────────────── -->
+            <StackPanel Orientation="Horizontal" Spacing="5"
+                        IsVisible="{Binding IsLoadingPlaceholder, Converter={x:Static BoolConverters.Not}}">
 
-            <controls:HighlightTextBlock
-              DisplayText="{Binding Name}"
-              HighlightText="{ReflectionBinding DataContext.FilterText, RelativeSource={RelativeSource AncestorType=UserControl}}"
-              VerticalAlignment="Center" />
-          </StackPanel>
+              <!--
+                Folder icon + optional inline loading spinner.
+                The spinner replaces the folder icon while children are being fetched
+                so the row width does not change.
+              -->
+              <Panel Width="14" Height="14"
+                     IsVisible="{Binding IsFolder}">
+                <PathIcon Width="14" Height="14"
+                          IsVisible="{Binding IsLoading, Converter={x:Static BoolConverters.Not}}"
+                          Data="M2 6C2 4.895 2.895 4 4 4H7.172C7.702 4 8.21 4.21 8.586 4.586L9.414 5.414C9.789 5.789 10.298 6 10.828 6H12C13.105 6 14 6.895 14 8V12C14 13.105 13.105 14 12 14H4C2.895 14 2 13.105 2 12V6Z" />
+                <ProgressBar Width="12" Height="12"
+                             IsIndeterminate="True"
+                             IsVisible="{Binding IsLoading}" />
+              </Panel>
+
+              <!-- File icon -->
+              <PathIcon Width="14" Height="14"
+                        IsVisible="{Binding IsFolder, Converter={x:Static BoolConverters.Not}}"
+                        Data="M4 2C2.895 2 2 2.895 2 4V12C2 13.105 2.895 14 4 14H12C13.105 14 14 13.105 14 12V6.414C14 5.884 13.789 5.375 13.414 5L11 2.586C10.625 2.211 10.116 2 9.586 2H4Z" />
+
+              <controls:HighlightTextBlock
+                DisplayText="{Binding Name}"
+                HighlightText="{ReflectionBinding DataContext.FilterText, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                VerticalAlignment="Center" />
+            </StackPanel>
+
+          </Grid>
         </TreeDataTemplate>
       </TreeView.ItemTemplate>
     </TreeView>
