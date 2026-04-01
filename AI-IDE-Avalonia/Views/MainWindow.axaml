@@ -16,7 +16,7 @@
         Foreground="{DynamicResource DockThemeForegroundBrush}"
         BorderThickness="1" BorderBrush="{DynamicResource DockThemeBorderLowBrush}"
         FontFamily="Segoe UI, SF Pro Display, Noto Sans, Cantarel"
-        Title="AI IDE" Height="680" Width="1200"
+        Title="{Binding AppTitle}" Height="680" Width="1200"
         Icon="avares://AI-IDE-Avalonia/Assets/app-icon.ico"
         ExtendClientAreaToDecorationsHint="True"
         ExtendClientAreaChromeHints="PreferSystemChrome">
@@ -34,6 +34,12 @@
   <Panel>
     <ExperimentalAcrylicBorder IsHitTestVisible="False" Material="{StaticResource AcrylicMaterial}" />
     <Panel Margin="{Binding #MainWindowView.OffScreenMargin}">
+      <TextBlock Text="{Binding AppTitle}"
+                 VerticalAlignment="Top" HorizontalAlignment="Center"
+                 IsHitTestVisible="False"
+                 FontSize="12" FontWeight="SemiBold"
+                 Margin="0,8,0,0"
+                 Foreground="{DynamicResource DockThemeForegroundBrush}" />
       <Panel Margin="{Binding #MainWindowView.WindowDecorationMargin}">
         <views:MainView>
           <views:MainView.Styles>

@@ -31,6 +31,7 @@ public partial class MainWindowViewModel : ObservableObject
     private Action? _toggleThemeAction;
 
     [ObservableProperty] private bool _isBackstageOpen;
+    [ObservableProperty] private string _appTitle = "Avalonia AI IDE";
     [ObservableProperty] private RibbonQuickAccessPlacement _quickAccessPlacement = RibbonQuickAccessPlacement.Below;
     [ObservableProperty] private RibbonStateOwnershipMode _stateOwnershipMode = RibbonStateOwnershipMode.Synchronized;
 
