@@ -10,7 +10,7 @@ using Dock.Model.Mvvm.Controls;
 
 namespace AI_IDE_Avalonia.ViewModels.Tools;
 
-public partial class Tool1ViewModel : Tool
+public partial class SolutionExplorerViewModel : Tool
 {
     private const int MaxTreeDepth = 10;
 
@@ -22,7 +22,7 @@ public partial class Tool1ViewModel : Tool
     public ObservableCollection<TreeNode> FilteredNodes { get; } = new();
     public ObservableCollection<TreeNode> SelectedNodes { get; } = new();
 
-    public Tool1ViewModel() => ApplyFilter();
+    public SolutionExplorerViewModel() => ApplyFilter();
 
     partial void OnFilterTextChanged(string value) => ApplyFilter();
 
@@ -62,8 +62,6 @@ public partial class Tool1ViewModel : Tool
 
         return nameMatches ? new TreeNode(node.Name, node.IsFolder) : null;
     }
-
-    // ── AI-callable tools ──────────────────────────────────────────────────────
 
     // ── Workspace loading ──────────────────────────────────────────────────────
 
@@ -116,6 +114,8 @@ public partial class Tool1ViewModel : Tool
 
         return new TreeNode(dir.Name, isFolder: true, children: children);
     }
+
+    // ── AI-callable tools ──────────────────────────────────────────────────────
 
     /// <summary>Search the project tree for nodes whose name contains <paramref name="query"/>.</summary>
     public string SearchNodes(string query)

@@ -56,9 +56,9 @@ public partial class MainWindowViewModel : ObservableObject
     public ObservableCollection<RibbonBackstageItem> BackstageItems { get; }
     public IReadOnlyList<string> ActiveContextGroupIds { get; } = [];
 
-    /// <summary>The project-explorer tool (Tool1) created during layout initialisation.</summary>
-    public AI_IDE_Avalonia.ViewModels.Tools.Tool1ViewModel? Tool1 =>
-        (_factory as DockFactory)?.Tool1;
+    /// <summary>The Solution Explorer tool created during layout initialisation.</summary>
+    public AI_IDE_Avalonia.ViewModels.Tools.SolutionExplorerViewModel? SolutionExplorer =>
+        (_factory as DockFactory)?.SolutionExplorer;
 
     public MainWindowViewModel()
     {
@@ -125,12 +125,12 @@ public partial class MainWindowViewModel : ObservableObject
     internal void WireToggleTheme(Action toggleTheme) => _toggleThemeAction = toggleTheme;
 
     /// <summary>
-    /// Loads the filesystem tree for <paramref name="folderPath"/> into Tool1
+    /// Loads the filesystem tree for <paramref name="folderPath"/> into the Solution Explorer
     /// and updates the window title to reflect the opened workspace.
     /// </summary>
     public void LoadWorkspace(string folderPath)
     {
-        Tool1?.LoadWorkspace(folderPath);
+        SolutionExplorer?.LoadWorkspace(folderPath);
         var folderName = new AI_IDE_Avalonia.Models.RecentFolderEntry { Path = folderPath }.Name;
         AppTitle = $"Avalonia AI IDE — {folderName}";
     }
