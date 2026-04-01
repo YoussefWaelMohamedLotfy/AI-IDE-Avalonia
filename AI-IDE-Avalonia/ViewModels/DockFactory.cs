@@ -22,6 +22,9 @@ public class DockFactory : Factory
     private IRootDock? _rootDock;
     private IDocumentDock? _documentDock;
 
+    /// <summary>The project-explorer tool created by <see cref="CreateLayout"/>; available after layout initialisation.</summary>
+    public Tool1ViewModel? Tool1 { get; private set; }
+
     public DockFactory(object context)
     {
         _context = context;
@@ -34,8 +37,9 @@ public class DockFactory : Factory
         var document1 = new DocumentViewModel {Id = "Document1", Title = "Document1"};
         var tool1 = new Tool1ViewModel {Id = "Tool1", Title = "Tool1", KeepPinnedDockableVisible = true};
 
-        // Expose the tree to the AI agent so it can use the tree-node tools.
+        // Expose the tree to the AI agent and to the workspace-selector flow.
         Tool5ViewModel.SharedTool1 = tool1;
+        Tool1 = tool1;
         var tool2 = new Tool2ViewModel {Id = "Tool2", Title = "Tool2", KeepPinnedDockableVisible = true};
         var tool3 = new Tool3ViewModel {Id = "Tool3", Title = "Tool3", CanDrag = false };
         var tool5 = new Tool5ViewModel {Id = "Tool5", Title = "Tool5" };

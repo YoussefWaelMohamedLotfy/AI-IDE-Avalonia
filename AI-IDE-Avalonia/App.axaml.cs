@@ -125,9 +125,27 @@ public partial class App : Application
             System.Diagnostics.Trace.TraceError($"Splash startup error: {ex}");
         }
 
+        // Swap the splash for the workspace-selector window.
+        var workspaceViewModel = new WorkspaceSelectorViewModel();
+        WorkspaceSelectorWindow? workspaceWindow = null;
+
+        await Dispatcher.UIThread.InvokeAsync(() =>
+        {
+            workspaceWindow = new WorkspaceSelectorWindow { DataContext = workspaceViewModel };
+            desktopLifetime.MainWindow = workspaceWindow;
+            workspaceWindow.Show();
+            splashWindow.Close();
+        });
+
+        // Wait for the user to pick a folder or skip (this is off the UI thread).
+        var selectedWorkspace = await workspaceViewModel.SelectionTask;
+
         // All work is done — switch to the main window on the UI thread.
         await Dispatcher.UIThread.InvokeAsync(() =>
         {
+            if (selectedWorkspace is not null)
+                mainWindowViewModel.LoadWorkspace(selectedWorkspace);
+
             var mainWindow = new MainWindow();
             mainWindow.DataContext = mainWindowViewModel;
 
@@ -143,7 +161,7 @@ public partial class App : Application
             desktopLifetime.MainWindow = mainWindow;
             mainWindow.Show();
 
-            splashWindow.Close();
+            workspaceWindow?.Close();
         });
 
         splashViewModel.Dispose();

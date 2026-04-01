@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.IO;
 using System.Linq;
 using System.Text;
 using AI_IDE_Avalonia.Models;
@@ -11,6 +12,8 @@ namespace AI_IDE_Avalonia.ViewModels.Tools;
 
 public partial class Tool1ViewModel : Tool
 {
+    private const int MaxTreeDepth = 10;
+
     private readonly ObservableCollection<TreeNode> _allNodes = TreeNode.CreateSampleProject();
 
     [ObservableProperty]
@@ -61,6 +64,58 @@ public partial class Tool1ViewModel : Tool
     }
 
     // ── AI-callable tools ──────────────────────────────────────────────────────
+
+    // ── Workspace loading ──────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Replaces the current tree with the real filesystem content under
+    /// <paramref name="folderPath"/>.  Folders are shown before files and
+    /// both are sorted alphabetically.  Hidden and inaccessible paths are
+    /// skipped silently.
+    /// </summary>
+    public void LoadWorkspace(string folderPath)
+    {
+        var di = new DirectoryInfo(folderPath);
+        if (!di.Exists) return;
+
+        _allNodes.Clear();
+
+        var rootNode = BuildDirectoryNode(di, maxDepth: MaxTreeDepth, currentDepth: 0);
+        if (rootNode is not null)
+            _allNodes.Add(rootNode);
+
+        ApplyFilter();
+    }
+
+    private static TreeNode? BuildDirectoryNode(DirectoryInfo dir, int maxDepth, int currentDepth)
+    {
+        if (currentDepth > maxDepth)
+            return null;
+
+        var children = new ObservableCollection<TreeNode>();
+
+        try
+        {
+            foreach (var subDir in dir.GetDirectories()
+                                      .Where(d => (d.Attributes & FileAttributes.Hidden) == 0)
+                                      .OrderBy(d => d.Name, StringComparer.OrdinalIgnoreCase))
+            {
+                var child = BuildDirectoryNode(subDir, maxDepth, currentDepth + 1);
+                if (child is not null)
+                    children.Add(child);
+            }
+
+            foreach (var file in dir.GetFiles()
+                                    .Where(f => (f.Attributes & FileAttributes.Hidden) == 0)
+                                    .OrderBy(f => f.Name, StringComparer.OrdinalIgnoreCase))
+            {
+                children.Add(new TreeNode(file.Name, isFolder: false));
+            }
+        }
+        catch (UnauthorizedAccessException) { /* skip inaccessible paths */ }
+
+        return new TreeNode(dir.Name, isFolder: true, children: children);
+    }
 
     /// <summary>Search the project tree for nodes whose name contains <paramref name="query"/>.</summary>
     public string SearchNodes(string query)
