@@ -196,7 +196,7 @@ public partial class SolutionExplorerViewModel : Tool
         if (sender is not TreeNode node) return;
         if (!node.IsExpanded || node.ChildrenLoaded) return;
 
-        // Fire-and-forget: exceptions are swallowed inside LoadNodeChildrenAsync.
+        // Fire-and-forget: the async method handles and logs its own exceptions.
         _ = LoadNodeChildrenAsync(node);
     }
 
@@ -271,9 +271,18 @@ public partial class SolutionExplorerViewModel : Tool
             if (!string.IsNullOrWhiteSpace(FilterText))
                 ApplyFilter();
         }
-        catch
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
-            // On failure, reset so the user can retry by collapsing and re-expanding.
+            // Expected filesystem errors — reset the placeholder so the user can retry.
+            node.ChildrenLoaded = false;
+            node.Children?.Clear();
+            node.Children?.Add(TreeNode.LoadingPlaceholder);
+        }
+        catch (Exception ex)
+        {
+            // Unexpected errors — log for diagnostics, then reset.
+            System.Diagnostics.Debug.WriteLine(
+                $"[SolutionExplorer] Unexpected error loading '{node.FullPath}': {ex}");
             node.ChildrenLoaded = false;
             node.Children?.Clear();
             node.Children?.Add(TreeNode.LoadingPlaceholder);
