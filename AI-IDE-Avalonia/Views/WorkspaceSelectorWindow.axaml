@@ -56,9 +56,9 @@
                          Foreground="#AAAACC" />
             </StackPanel>
 
-            <!-- Close / skip button -->
+            <!-- Close / exit button -->
             <Button Grid.Column="1"
-                    Command="{Binding SkipCommand}"
+                    Command="{Binding ExitCommand}"
                     Content="✕"
                     Width="28" Height="28"
                     FontSize="13"

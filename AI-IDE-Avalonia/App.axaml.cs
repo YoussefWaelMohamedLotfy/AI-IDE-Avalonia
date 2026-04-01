@@ -140,6 +140,18 @@ public partial class App : Application
         // Wait for the user to pick a folder or skip (this is off the UI thread).
         var selectedWorkspace = await workspaceViewModel.SelectionTask;
 
+        // User pressed ✕ — close the workspace window and shut down cleanly.
+        if (workspaceViewModel.ExitRequested)
+        {
+            await Dispatcher.UIThread.InvokeAsync(() =>
+            {
+                workspaceWindow?.Close();
+                desktopLifetime.TryShutdown();
+            });
+            splashViewModel.Dispose();
+            return;
+        }
+
         // If a workspace was chosen, show the loading window while the tree is built.
         WorkspaceLoadingWindow? loadingWindow = null;
 

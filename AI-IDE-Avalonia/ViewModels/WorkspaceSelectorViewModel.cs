@@ -55,6 +55,17 @@ public partial class WorkspaceSelectorViewModel : ViewModelBase
     [RelayCommand]
     private void Skip() => _tcs.TrySetResult(null);
 
+    /// <summary>Exits the application entirely (triggered by the ✕ button).</summary>
+    [RelayCommand]
+    private void Exit()
+    {
+        ExitRequested = true;
+        _tcs.TrySetResult(null);
+    }
+
+    /// <summary>True when the user chose to close the app rather than skip.</summary>
+    public bool ExitRequested { get; private set; }
+
     // ── Internal ──────────────────────────────────────────────────────────────
 
     private void SetResult(string path)
