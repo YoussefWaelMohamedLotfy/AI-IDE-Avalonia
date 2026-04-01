@@ -138,10 +138,13 @@ public partial class MainWindowViewModel : ObservableObject
     /// Asynchronously loads the filesystem tree for <paramref name="folderPath"/> into the Solution
     /// Explorer, reporting status messages via <paramref name="progress"/>, then updates the window title.
     /// </summary>
-    public async Task LoadWorkspaceAsync(string folderPath, IProgress<string>? progress = null)
+    public async Task LoadWorkspaceAsync(
+        string folderPath,
+        IProgress<string>? progress = null,
+        System.Threading.CancellationToken cancellationToken = default)
     {
         if (SolutionExplorer is { } se)
-            await se.LoadWorkspaceAsync(folderPath, progress);
+            await se.LoadWorkspaceAsync(folderPath, progress, cancellationToken);
 
         AppTitle = $"Avalonia AI IDE — {AI_IDE_Avalonia.Models.RecentFolderEntry.GetFolderName(folderPath)}";
     }
