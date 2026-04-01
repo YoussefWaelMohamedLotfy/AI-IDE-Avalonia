@@ -175,6 +175,12 @@ public partial class App : Application
                 var progress = new Progress<string>(msg => loadingViewModel.AppendStatus(msg));
                 await mainWindowViewModel.LoadWorkspaceAsync(selectedWorkspace, progress);
             });
+
+#if DEBUG
+            // Keep the loading window open for a moment so the animated progress bar is visible.
+            // This confirms the UI thread was NOT blocked during loading (bar was running freely).
+            await Task.Delay(2000);
+#endif
         }
 
         // All work is done — switch to the main window on the UI thread.
