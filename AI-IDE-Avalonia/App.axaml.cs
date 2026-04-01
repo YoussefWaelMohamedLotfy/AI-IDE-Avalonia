@@ -125,6 +125,58 @@ public partial class App : Application
             System.Diagnostics.Trace.TraceError($"Splash startup error: {ex}");
         }
 
+        // Swap the splash for the workspace-selector window.
+        var workspaceViewModel = new WorkspaceSelectorViewModel();
+        WorkspaceSelectorWindow? workspaceWindow = null;
+
+        await Dispatcher.UIThread.InvokeAsync(() =>
+        {
+            workspaceWindow = new WorkspaceSelectorWindow { DataContext = workspaceViewModel };
+            desktopLifetime.MainWindow = workspaceWindow;
+            workspaceWindow.Show();
+            splashWindow.Close();
+        });
+
+        // Wait for the user to pick a folder or skip (this is off the UI thread).
+        var selectedWorkspace = await workspaceViewModel.SelectionTask;
+
+        // User pressed ✕ — close the workspace window and shut down cleanly.
+        if (workspaceViewModel.ExitRequested)
+        {
+            await Dispatcher.UIThread.InvokeAsync(() =>
+            {
+                workspaceWindow?.Close();
+                desktopLifetime.TryShutdown();
+            });
+            splashViewModel.Dispose();
+            workspaceViewModel.Dispose();
+            return;
+        }
+
+        // If a workspace was chosen, show the loading window while the tree is built.
+        WorkspaceLoadingWindow? loadingWindow = null;
+
+        if (selectedWorkspace is not null)
+        {
+            var loadingViewModel = new WorkspaceLoadingViewModel();
+
+            await Dispatcher.UIThread.InvokeAsync(() =>
+            {
+                loadingWindow = new WorkspaceLoadingWindow { DataContext = loadingViewModel };
+                desktopLifetime.MainWindow = loadingWindow;
+                loadingWindow.Show();
+                workspaceWindow?.Close();
+                workspaceWindow = null;
+            });
+
+            // Progress<T> must be created on the UI thread so its callback marshals back automatically.
+            await Dispatcher.UIThread.InvokeAsync(async () =>
+            {
+                var progress = new Progress<string>(msg => loadingViewModel.AppendStatus(msg));
+                await mainWindowViewModel.LoadWorkspaceAsync(selectedWorkspace, progress);
+            });
+        }
+
         // All work is done — switch to the main window on the UI thread.
         await Dispatcher.UIThread.InvokeAsync(() =>
         {
@@ -143,9 +195,11 @@ public partial class App : Application
             desktopLifetime.MainWindow = mainWindow;
             mainWindow.Show();
 
-            splashWindow.Close();
+            loadingWindow?.Close();
+            workspaceWindow?.Close();
         });
 
         splashViewModel.Dispose();
+        workspaceViewModel.Dispose();
     }
 }

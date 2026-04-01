@@ -6,9 +6,9 @@ using Avalonia.Interactivity;
 
 namespace AI_IDE_Avalonia.Views.Tools;
 
-public partial class Tool1View : UserControl
+public partial class SolutionExplorerView : UserControl
 {
-    public Tool1View()
+    public SolutionExplorerView()
     {
         InitializeComponent();
 

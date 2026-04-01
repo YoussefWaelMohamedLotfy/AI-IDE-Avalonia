@@ -56,6 +56,10 @@ public partial class MainWindowViewModel : ObservableObject
     public ObservableCollection<RibbonBackstageItem> BackstageItems { get; }
     public IReadOnlyList<string> ActiveContextGroupIds { get; } = [];
 
+    /// <summary>The Solution Explorer tool created during layout initialisation.</summary>
+    public AI_IDE_Avalonia.ViewModels.Tools.SolutionExplorerViewModel? SolutionExplorer =>
+        (_factory as DockFactory)?.SolutionExplorer;
+
     public MainWindowViewModel()
     {
         _factory = new DockFactory(new DemoData());
@@ -119,6 +123,28 @@ public partial class MainWindowViewModel : ObservableObject
     }
 
     internal void WireToggleTheme(Action toggleTheme) => _toggleThemeAction = toggleTheme;
+
+    /// <summary>
+    /// Loads the filesystem tree for <paramref name="folderPath"/> into the Solution Explorer
+    /// and updates the window title to reflect the opened workspace.
+    /// </summary>
+    public void LoadWorkspace(string folderPath)
+    {
+        SolutionExplorer?.LoadWorkspace(folderPath);
+        AppTitle = $"Avalonia AI IDE — {AI_IDE_Avalonia.Models.RecentFolderEntry.GetFolderName(folderPath)}";
+    }
+
+    /// <summary>
+    /// Asynchronously loads the filesystem tree for <paramref name="folderPath"/> into the Solution
+    /// Explorer, reporting status messages via <paramref name="progress"/>, then updates the window title.
+    /// </summary>
+    public async Task LoadWorkspaceAsync(string folderPath, IProgress<string>? progress = null)
+    {
+        if (SolutionExplorer is { } se)
+            await se.LoadWorkspaceAsync(folderPath, progress);
+
+        AppTitle = $"Avalonia AI IDE — {AI_IDE_Avalonia.Models.RecentFolderEntry.GetFolderName(folderPath)}";
+    }
 
     public void InitLayout()
     {

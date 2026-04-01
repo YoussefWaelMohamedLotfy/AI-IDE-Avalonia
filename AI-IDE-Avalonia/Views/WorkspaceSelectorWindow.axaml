@@ -1,0 +1,178 @@
+<Window x:Class="AI_IDE_Avalonia.Views.WorkspaceSelectorWindow"
+        xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:AI_IDE_Avalonia.ViewModels"
+        xmlns:models="using:AI_IDE_Avalonia.Models"
+        x:DataType="vm:WorkspaceSelectorViewModel"
+        Title="Open Workspace"
+        Width="640" Height="500"
+        WindowStartupLocation="CenterScreen"
+        CanResize="False"
+        ShowInTaskbar="True"
+        SystemDecorations="None"
+        TransparencyLevelHint="AcrylicBlur"
+        Background="{x:Null}">
+
+  <Design.DataContext>
+    <vm:WorkspaceSelectorViewModel />
+  </Design.DataContext>
+
+  <Window.Resources>
+    <ExperimentalAcrylicMaterial BackgroundSource="Digger"
+                                  TintColor="#1E1E2E"
+                                  TintOpacity="1"
+                                  FallbackColor="#1E1E2E"
+                                  MaterialOpacity="0.96"
+                                  x:Key="WorkspaceAcrylic" />
+  </Window.Resources>
+
+  <Panel>
+    <ExperimentalAcrylicBorder IsHitTestVisible="False"
+                               Material="{StaticResource WorkspaceAcrylic}"
+                               CornerRadius="12" />
+
+    <Border CornerRadius="12"
+            BorderThickness="1"
+            BorderBrush="#33FFFFFF">
+
+      <Grid RowDefinitions="Auto,*,Auto">
+
+        <!-- ── Header ──────────────────────────────────────────────────── -->
+        <Border Grid.Row="0"
+                Padding="32,28,32,20"
+                BorderBrush="#22FFFFFF"
+                BorderThickness="0,0,0,1"
+                PointerPressed="OnHeaderPointerPressed"
+                Cursor="SizeAll">
+          <Grid ColumnDefinitions="*,Auto">
+
+            <StackPanel Grid.Column="0" Spacing="4">
+              <TextBlock Text="Open Workspace"
+                         FontSize="22"
+                         FontWeight="SemiBold"
+                         Foreground="White" />
+              <TextBlock Text="Select a recent folder or open a new one on your machine"
+                         FontSize="12"
+                         Foreground="#AAAACC" />
+            </StackPanel>
+
+            <!-- Close / exit button -->
+            <Button Grid.Column="1"
+                    Command="{Binding ExitCommand}"
+                    Content="✕"
+                    Width="28" Height="28"
+                    FontSize="13"
+                    Padding="0"
+                    HorizontalContentAlignment="Center"
+                    VerticalContentAlignment="Center"
+                    CornerRadius="14"
+                    Foreground="#CCCCDD"
+                    Background="Transparent"
+                    BorderThickness="0"
+                    Cursor="Hand"
+                    VerticalAlignment="Top" />
+          </Grid>
+        </Border>
+
+        <!-- ── Content ─────────────────────────────────────────────────── -->
+        <ScrollViewer Grid.Row="1" Margin="24,16,24,8">
+          <StackPanel Spacing="6">
+
+            <!-- Open Folder button -->
+            <Button Command="{Binding BrowseFolderCommand}"
+                    HorizontalAlignment="Stretch"
+                    HorizontalContentAlignment="Left"
+                    Height="48"
+                    CornerRadius="8"
+                    Background="#33FFFFFF"
+                    BorderBrush="#44FFFFFF"
+                    BorderThickness="1"
+                    Cursor="Hand">
+              <StackPanel Orientation="Horizontal" Spacing="12" Margin="4,0">
+                <TextBlock Text="📂" FontSize="18" VerticalAlignment="Center" />
+                <TextBlock Text="Open Folder…"
+                           FontSize="14"
+                           Foreground="White"
+                           VerticalAlignment="Center" />
+              </StackPanel>
+            </Button>
+
+            <!-- Recent Folders heading -->
+            <TextBlock Text="RECENT"
+                       FontSize="10"
+                       FontWeight="SemiBold"
+                       Foreground="#666688"
+                       LetterSpacing="1.5"
+                       Margin="2,14,0,4"
+                       IsVisible="{Binding HasRecentFolders}" />
+
+            <!-- Empty state -->
+            <TextBlock Text="No recent workspaces"
+                       FontSize="12"
+                       Foreground="#555566"
+                       HorizontalAlignment="Center"
+                       Margin="0,24,0,0"
+                       IsVisible="{Binding !HasRecentFolders}" />
+
+            <!-- Recent folder items -->
+            <ItemsControl ItemsSource="{Binding RecentFolders}"
+                          x:CompileBindings="False">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate DataType="models:RecentFolderEntry">
+                  <Button Command="{Binding $parent[ItemsControl].DataContext.OpenRecentFolderCommand}"
+                          CommandParameter="{Binding}"
+                          HorizontalAlignment="Stretch"
+                          HorizontalContentAlignment="Stretch"
+                          Height="54"
+                          CornerRadius="6"
+                          Background="Transparent"
+                          BorderBrush="#22FFFFFF"
+                          BorderThickness="0,0,0,1"
+                          Padding="2,0"
+                          Cursor="Hand">
+                    <Grid ColumnDefinitions="Auto,*">
+                      <TextBlock Grid.Column="0"
+                                 Text="📁"
+                                 FontSize="22"
+                                 VerticalAlignment="Center"
+                                 Margin="0,0,14,0" />
+                      <StackPanel Grid.Column="1"
+                                  VerticalAlignment="Center"
+                                  Spacing="3">
+                        <TextBlock Text="{Binding Name}"
+                                   FontSize="13"
+                                   Foreground="White"
+                                   FontWeight="Medium" />
+                        <TextBlock Text="{Binding Path}"
+                                   FontSize="10"
+                                   Foreground="#555577"
+                                   TextTrimming="CharacterEllipsis" />
+                      </StackPanel>
+                    </Grid>
+                  </Button>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+
+          </StackPanel>
+        </ScrollViewer>
+
+        <!-- ── Footer ──────────────────────────────────────────────────── -->
+        <Border Grid.Row="2"
+                Padding="32,14"
+                BorderBrush="#22FFFFFF"
+                BorderThickness="0,1,0,0">
+          <Button Command="{Binding SkipCommand}"
+                  Content="Continue Without Workspace"
+                  HorizontalAlignment="Right"
+                  Foreground="#888899"
+                  Background="Transparent"
+                  BorderThickness="0"
+                  FontSize="12"
+                  Cursor="Hand" />
+        </Border>
+
+      </Grid>
+    </Border>
+  </Panel>
+</Window>

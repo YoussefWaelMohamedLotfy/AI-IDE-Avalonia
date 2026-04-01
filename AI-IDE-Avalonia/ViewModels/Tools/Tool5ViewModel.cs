@@ -38,8 +38,8 @@ public partial class Tool5ViewModel : Tool, IAsyncDisposable
         "always prefer this tool when the user asks you to write, generate, or create code. " +
         "Paths use '/' as separator (e.g. 'MyAIProject/src/Agents').";
 
-    /// <summary>Shared Tool1 instance wired by DockFactory; used to create AI tree tools.</summary>
-    internal static Tool1ViewModel? SharedTool1 { get; set; }
+    /// <summary>Shared Solution Explorer instance wired by DockFactory; used to create AI tree tools.</summary>
+    internal static SolutionExplorerViewModel? SharedSolutionExplorer { get; set; }
 
     // ── Ollama backend ──────────────────────────────────────────────────────────
 
@@ -448,27 +448,27 @@ public partial class Tool5ViewModel : Tool, IAsyncDisposable
 
     private static List<Ai.AITool> BuildTools()
     {
-        var tool1 = SharedTool1;
+        var solutionExplorer = SharedSolutionExplorer;
         var tools = new List<Ai.AITool>();
 
-        if (tool1 is not null)
+        if (solutionExplorer is not null)
         {
             tools.Add(Ai.AIFunctionFactory.Create(
-                new Func<string, string>(query => tool1.SearchNodes(query)),
+                new Func<string, string>(query => solutionExplorer.SearchNodes(query)),
                 "search_tree_nodes",
                 "Search the project file tree for nodes whose name contains the given query string. " +
                 "Returns matching node paths separated by '/'."));
 
             tools.Add(Ai.AIFunctionFactory.Create(
                 new Func<string, string, bool, string>((parentPath, nodeName, isFolder) =>
-                    tool1.AddNode(parentPath, nodeName, isFolder)),
+                    solutionExplorer.AddNode(parentPath, nodeName, isFolder)),
                 "add_tree_node",
                 "Add a new file or folder to the project tree. " +
                 "Use parentPath='' to add at the root level. " +
                 "Set isFolder=true to create a folder, false for a file."));
 
             tools.Add(Ai.AIFunctionFactory.Create(
-                new Func<string, string>(nodePath => tool1.DeleteNode(nodePath)),
+                new Func<string, string>(nodePath => solutionExplorer.DeleteNode(nodePath)),
                 "delete_tree_node",
                 "Delete a node from the project tree by its full path (e.g. 'MyAIProject/src/Agents/ChatAgent.cs')."));
         }

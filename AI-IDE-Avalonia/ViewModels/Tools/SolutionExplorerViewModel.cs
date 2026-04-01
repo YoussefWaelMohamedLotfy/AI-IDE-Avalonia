@@ -1,16 +1,20 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.IO;
 using System.Linq;
 using System.Text;
+using System.Threading.Tasks;
 using AI_IDE_Avalonia.Models;
 using CommunityToolkit.Mvvm.ComponentModel;
 using Dock.Model.Mvvm.Controls;
 
 namespace AI_IDE_Avalonia.ViewModels.Tools;
 
-public partial class Tool1ViewModel : Tool
+public partial class SolutionExplorerViewModel : Tool
 {
+    private const int MaxTreeDepth = 10;
+
     private readonly ObservableCollection<TreeNode> _allNodes = TreeNode.CreateSampleProject();
 
     [ObservableProperty]
@@ -19,7 +23,7 @@ public partial class Tool1ViewModel : Tool
     public ObservableCollection<TreeNode> FilteredNodes { get; } = new();
     public ObservableCollection<TreeNode> SelectedNodes { get; } = new();
 
-    public Tool1ViewModel() => ApplyFilter();
+    public SolutionExplorerViewModel() => ApplyFilter();
 
     partial void OnFilterTextChanged(string value) => ApplyFilter();
 
@@ -58,6 +62,82 @@ public partial class Tool1ViewModel : Tool
             return new TreeNode(node.Name, node.IsFolder, matchingChildren);
 
         return nameMatches ? new TreeNode(node.Name, node.IsFolder) : null;
+    }
+
+    // ── Workspace loading ──────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Asynchronously replaces the current tree with the real filesystem content under
+    /// <paramref name="folderPath"/>, reporting status via <paramref name="progress"/>.
+    /// Filesystem traversal runs on the thread pool; observable collection updates run on the caller thread.
+    /// </summary>
+    public async Task LoadWorkspaceAsync(string folderPath, IProgress<string>? progress = null)
+    {
+        var di = new DirectoryInfo(folderPath);
+        if (!di.Exists) return;
+
+        progress?.Report($"Opening workspace: {di.Name}");
+        progress?.Report("Scanning directory structure…");
+
+        var rootNode = await Task.Run(() => BuildDirectoryNode(di, maxDepth: MaxTreeDepth, currentDepth: 0));
+
+        progress?.Report("Building file tree…");
+
+        _allNodes.Clear();
+        if (rootNode is not null)
+            _allNodes.Add(rootNode);
+
+        ApplyFilter();
+
+        progress?.Report("Workspace loaded successfully.");
+    }
+
+    /// <summary>
+    /// Synchronous convenience wrapper around <see cref="LoadWorkspaceAsync"/>.
+    /// Used by the skip/fast-open path that runs on the UI thread.
+    /// </summary>
+    public void LoadWorkspace(string folderPath)
+    {
+        var di = new DirectoryInfo(folderPath);
+        if (!di.Exists) return;
+
+        _allNodes.Clear();
+
+        var rootNode = BuildDirectoryNode(di, maxDepth: MaxTreeDepth, currentDepth: 0);
+        if (rootNode is not null)
+            _allNodes.Add(rootNode);
+
+        ApplyFilter();
+    }
+
+    private static TreeNode? BuildDirectoryNode(DirectoryInfo dir, int maxDepth, int currentDepth)
+    {
+        if (currentDepth > maxDepth)
+            return null;
+
+        var children = new ObservableCollection<TreeNode>();
+
+        try
+        {
+            foreach (var subDir in dir.GetDirectories()
+                                      .Where(d => (d.Attributes & FileAttributes.Hidden) == 0)
+                                      .OrderBy(d => d.Name, StringComparer.OrdinalIgnoreCase))
+            {
+                var child = BuildDirectoryNode(subDir, maxDepth, currentDepth + 1);
+                if (child is not null)
+                    children.Add(child);
+            }
+
+            foreach (var file in dir.GetFiles()
+                                    .Where(f => (f.Attributes & FileAttributes.Hidden) == 0)
+                                    .OrderBy(f => f.Name, StringComparer.OrdinalIgnoreCase))
+            {
+                children.Add(new TreeNode(file.Name, isFolder: false));
+            }
+        }
+        catch (UnauthorizedAccessException) { /* skip inaccessible paths */ }
+
+        return new TreeNode(dir.Name, isFolder: true, children: children);
     }
 
     // ── AI-callable tools ──────────────────────────────────────────────────────
