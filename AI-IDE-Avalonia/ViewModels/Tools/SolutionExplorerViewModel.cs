@@ -33,47 +33,177 @@ public partial class SolutionExplorerViewModel : Tool
         ApplyFilter();
     }
 
-    partial void OnFilterTextChanged(string value) => ApplyFilter();
+    // Cancels any in-progress async filter when the user types a new query.
+    private CancellationTokenSource? _filterCts;
 
-    private void ApplyFilter()
+    // Debounce delay: wait this long after the last keystroke before searching.
+    private static readonly TimeSpan FilterDebounce = TimeSpan.FromMilliseconds(300);
+
+    partial void OnFilterTextChanged(string value) => ScheduleFilter(debounce: true);
+
+    // Kept so existing internal callers (workspace load, node add/delete) don't need changing.
+    private void ApplyFilter() => ScheduleFilter(debounce: false);
+
+    private void ScheduleFilter(bool debounce = false)
     {
-        FilteredNodes.Clear();
-        var filter = FilterText.Trim();
-
-        foreach (var node in _allNodes)
-        {
-            var result = string.IsNullOrEmpty(filter)
-                ? node
-                : FilterNode(node, filter);
-
-            if (result is not null)
-                FilteredNodes.Add(result);
-        }
+        _filterCts?.Cancel();
+        _filterCts?.Dispose();
+        _filterCts = new CancellationTokenSource();
+        _ = ApplyFilterAsync(_filterCts.Token, debounce);
     }
 
-    private static TreeNode? FilterNode(TreeNode node, string filter)
+    private async Task ApplyFilterAsync(CancellationToken ct, bool debounce = false)
     {
-        // Never surface internal placeholder nodes to the filtered view.
+        // Wait for the user to stop typing before hitting the filesystem.
+        if (debounce)
+        {
+            try { await Task.Delay(FilterDebounce, ct); }
+            catch (OperationCanceledException) { return; }
+        }
+
+        var filter = FilterText.Trim();
+
+        if (string.IsNullOrEmpty(filter))
+        {
+            FilteredNodes.Clear();
+            foreach (var node in _allNodes)
+                FilteredNodes.Add(node);
+            return;
+        }
+
+        // Snapshot _allNodes on the UI thread before handing off to the thread pool.
+        var roots = _allNodes.ToList();
+
+        List<TreeNode?> results;
+        try
+        {
+            results = await Task.Run(
+                () => roots.Select(n => FilterNodeDeep(n, filter, ct)).ToList(),
+                ct);
+        }
+        catch (OperationCanceledException)
+        {
+            return; // superseded by a newer filter run — leave FilteredNodes as-is
+        }
+
+        // One final check: if the token fired between Task.Run completing and this line,
+        // discard the stale results so the next scheduled run takes over cleanly.
+        if (ct.IsCancellationRequested) return;
+
+        FilteredNodes.Clear();
+        foreach (var result in results)
+            if (result is not null)
+            {
+                ExpandAll(result);
+                FilteredNodes.Add(result);
+            }
+    }
+
+    /// <summary>Recursively expands all folder nodes in a filter-result subtree.</summary>
+    private static void ExpandAll(TreeNode node)
+    {
+        if (!node.IsFolder || node.Children is not { Count: > 0 }) return;
+        node.IsExpanded = true;
+        foreach (var child in node.Children)
+            ExpandAll(child);
+    }
+
+    /// <summary>
+    /// Recursively filters <paramref name="node"/> against <paramref name="filter"/>.
+    /// For folder nodes whose children have not yet been loaded into memory, the filesystem
+    /// is searched directly so that the filter always scans the full tree depth.
+    /// </summary>
+    private static TreeNode? FilterNodeDeep(TreeNode node, string filter, CancellationToken ct)
+    {
+        ct.ThrowIfCancellationRequested();
         if (node.IsLoadingPlaceholder) return null;
 
         bool nameMatches = node.Name.Contains(filter, StringComparison.OrdinalIgnoreCase);
 
-        if (node.Children is null || node.Children.Count == 0)
+        if (!node.IsFolder)
             return nameMatches ? node : null;
 
-        var matchingChildren = new ObservableCollection<TreeNode>();
-        foreach (var child in node.Children)
+        // ── Loaded folder: recurse through in-memory children ─────────────────
+        if (node.ChildrenLoaded && node.Children is { Count: > 0 })
         {
-            if (child.IsLoadingPlaceholder) continue;
-            var filtered = FilterNode(child, filter);
-            if (filtered is not null)
-                matchingChildren.Add(filtered);
+            // Snapshot to avoid races with LoadNodeChildrenAsync running on the UI thread.
+            var childSnapshot = node.Children.Where(c => !c.IsLoadingPlaceholder).ToList();
+            var matching = new ObservableCollection<TreeNode>();
+            foreach (var child in childSnapshot)
+            {
+                var r = FilterNodeDeep(child, filter, ct);
+                if (r is not null)
+                    matching.Add(r);
+            }
+
+            if (matching.Count > 0)
+                return new TreeNode(node.Name, isFolder: true, children: matching,
+                    fullPath: node.FullPath, childrenLoaded: true);
+            return nameMatches
+                ? new TreeNode(node.Name, isFolder: true, fullPath: node.FullPath, childrenLoaded: true)
+                : null;
         }
 
-        if (matchingChildren.Count > 0)
-            return new TreeNode(node.Name, node.IsFolder, matchingChildren);
+        // ── Unloaded folder: search the filesystem directly ───────────────────
+        if (node.FullPath is not null)
+        {
+            var fsMatches = SearchFilesystemDeep(node.FullPath, filter, ct);
+            if (fsMatches.Count > 0)
+                return new TreeNode(node.Name, isFolder: true, children: fsMatches,
+                    fullPath: node.FullPath, childrenLoaded: false);
+            return nameMatches
+                ? new TreeNode(node.Name, isFolder: true, fullPath: node.FullPath, childrenLoaded: false)
+                : null;
+        }
 
-        return nameMatches ? new TreeNode(node.Name, node.IsFolder) : null;
+        return nameMatches ? new TreeNode(node.Name, isFolder: true) : null;
+    }
+
+    /// <summary>
+    /// Recursively walks the directory at <paramref name="dirPath"/> and returns
+    /// a collection of <see cref="TreeNode"/> entries whose name (or a descendant's name)
+    /// contains <paramref name="filter"/> (case-insensitive).
+    /// </summary>
+    private static ObservableCollection<TreeNode> SearchFilesystemDeep(
+        string dirPath, string filter, CancellationToken ct)
+    {
+        var results = new ObservableCollection<TreeNode>();
+        try
+        {
+            var dir = new DirectoryInfo(dirPath);
+            if (!dir.Exists) return results;
+
+            foreach (var subDir in dir.GetDirectories()
+                                       .Where(d => (d.Attributes & FileAttributes.Hidden) == 0)
+                                       .OrderBy(d => d.Name, StringComparer.OrdinalIgnoreCase))
+            {
+                ct.ThrowIfCancellationRequested();
+                bool matches = subDir.Name.Contains(filter, StringComparison.OrdinalIgnoreCase);
+                var children = SearchFilesystemDeep(subDir.FullName, filter, ct);
+
+                if (matches || children.Count > 0)
+                {
+                    results.Add(new TreeNode(
+                        subDir.Name,
+                        isFolder: true,
+                        children: children.Count > 0 ? children : null,
+                        fullPath: subDir.FullName,
+                        childrenLoaded: false));
+                }
+            }
+
+            foreach (var file in dir.GetFiles()
+                                     .Where(f => (f.Attributes & FileAttributes.Hidden) == 0)
+                                     .OrderBy(f => f.Name, StringComparer.OrdinalIgnoreCase))
+            {
+                ct.ThrowIfCancellationRequested();
+                if (file.Name.Contains(filter, StringComparison.OrdinalIgnoreCase))
+                    results.Add(new TreeNode(file.Name, isFolder: false, fullPath: file.FullName));
+            }
+        }
+        catch (UnauthorizedAccessException) { /* skip inaccessible directories */ }
+        catch (IOException) { /* skip unreadable paths */ }
+        return results;
     }
 
     // ── Workspace loading ──────────────────────────────────────────────────────
