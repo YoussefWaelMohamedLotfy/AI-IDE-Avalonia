@@ -1,0 +1,86 @@
+<Window x:Class="AI_IDE_Avalonia.Views.WorkspaceLoadingWindow"
+        xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:AI_IDE_Avalonia.ViewModels"
+        x:DataType="vm:WorkspaceLoadingViewModel"
+        Title="Opening Workspace"
+        Width="480" Height="320"
+        WindowStartupLocation="CenterScreen"
+        CanResize="False"
+        ShowInTaskbar="True"
+        SystemDecorations="None"
+        TransparencyLevelHint="AcrylicBlur"
+        Background="{x:Null}">
+
+  <Design.DataContext>
+    <vm:WorkspaceLoadingViewModel />
+  </Design.DataContext>
+
+  <Window.Resources>
+    <ExperimentalAcrylicMaterial BackgroundSource="Digger"
+                                  TintColor="#1E1E2E"
+                                  TintOpacity="1"
+                                  FallbackColor="#1E1E2E"
+                                  MaterialOpacity="0.96"
+                                  x:Key="LoadingAcrylic" />
+  </Window.Resources>
+
+  <Panel>
+    <ExperimentalAcrylicBorder IsHitTestVisible="False"
+                               Material="{StaticResource LoadingAcrylic}"
+                               CornerRadius="12" />
+
+    <Border CornerRadius="12"
+            BorderThickness="1"
+            BorderBrush="#33FFFFFF">
+
+      <Grid RowDefinitions="Auto,*,Auto"
+            Margin="28,24,28,20">
+
+        <!-- ── Header ──────────────────────────────────────────────────── -->
+        <StackPanel Grid.Row="0" Spacing="4" Margin="0,0,0,16">
+          <TextBlock Text="Opening Workspace…"
+                     FontSize="18"
+                     FontWeight="SemiBold"
+                     Foreground="White" />
+          <TextBlock Text="Please wait while the workspace is being loaded"
+                     FontSize="11"
+                     Foreground="#AAAACC" />
+        </StackPanel>
+
+        <!-- ── Status log ──────────────────────────────────────────────── -->
+        <Border Grid.Row="1"
+                CornerRadius="6"
+                Background="#0FFFFFFF"
+                BorderBrush="#22FFFFFF"
+                BorderThickness="1">
+          <TextBox x:Name="StatusTextBox"
+                   Text="{Binding StatusLog}"
+                   IsReadOnly="True"
+                   AcceptsReturn="False"
+                   TextWrapping="Wrap"
+                   FontSize="11"
+                   FontFamily="Cascadia Code, Consolas, Courier New, monospace"
+                   Foreground="#CCCCDD"
+                   Background="Transparent"
+                   BorderThickness="0"
+                   Padding="10,8"
+                   VerticalContentAlignment="Top"
+                   ScrollViewer.VerticalScrollBarVisibility="Auto"
+                   ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                   CaretBrush="Transparent" />
+        </Border>
+
+        <!-- ── Indeterminate progress bar ──────────────────────────────── -->
+        <ProgressBar Grid.Row="2"
+                     IsIndeterminate="True"
+                     Height="3"
+                     CornerRadius="2"
+                     Margin="0,14,0,0"
+                     Foreground="#7C3AED"
+                     Background="#33FFFFFF" />
+
+      </Grid>
+    </Border>
+  </Panel>
+</Window>

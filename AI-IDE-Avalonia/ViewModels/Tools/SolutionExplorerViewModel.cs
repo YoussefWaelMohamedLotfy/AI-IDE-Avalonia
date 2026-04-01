@@ -4,6 +4,7 @@ using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
 using System.Text;
+using System.Threading.Tasks;
 using AI_IDE_Avalonia.Models;
 using CommunityToolkit.Mvvm.ComponentModel;
 using Dock.Model.Mvvm.Controls;
@@ -66,10 +67,34 @@ public partial class SolutionExplorerViewModel : Tool
     // ── Workspace loading ──────────────────────────────────────────────────────
 
     /// <summary>
-    /// Replaces the current tree with the real filesystem content under
-    /// <paramref name="folderPath"/>.  Folders are shown before files and
-    /// both are sorted alphabetically.  Hidden and inaccessible paths are
-    /// skipped silently.
+    /// Asynchronously replaces the current tree with the real filesystem content under
+    /// <paramref name="folderPath"/>, reporting status via <paramref name="progress"/>.
+    /// Filesystem traversal runs on the thread pool; observable collection updates run on the caller thread.
+    /// </summary>
+    public async Task LoadWorkspaceAsync(string folderPath, IProgress<string>? progress = null)
+    {
+        var di = new DirectoryInfo(folderPath);
+        if (!di.Exists) return;
+
+        progress?.Report($"Opening workspace: {di.Name}");
+        progress?.Report("Scanning directory structure…");
+
+        var rootNode = await Task.Run(() => BuildDirectoryNode(di, maxDepth: MaxTreeDepth, currentDepth: 0));
+
+        progress?.Report("Building file tree…");
+
+        _allNodes.Clear();
+        if (rootNode is not null)
+            _allNodes.Add(rootNode);
+
+        ApplyFilter();
+
+        progress?.Report("Workspace loaded successfully.");
+    }
+
+    /// <summary>
+    /// Synchronous convenience wrapper around <see cref="LoadWorkspaceAsync"/>.
+    /// Used by the skip/fast-open path that runs on the UI thread.
     /// </summary>
     public void LoadWorkspace(string folderPath)
     {

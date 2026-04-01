@@ -140,12 +140,33 @@ public partial class App : Application
         // Wait for the user to pick a folder or skip (this is off the UI thread).
         var selectedWorkspace = await workspaceViewModel.SelectionTask;
 
+        // If a workspace was chosen, show the loading window while the tree is built.
+        WorkspaceLoadingWindow? loadingWindow = null;
+
+        if (selectedWorkspace is not null)
+        {
+            var loadingViewModel = new WorkspaceLoadingViewModel();
+
+            await Dispatcher.UIThread.InvokeAsync(() =>
+            {
+                loadingWindow = new WorkspaceLoadingWindow { DataContext = loadingViewModel };
+                desktopLifetime.MainWindow = loadingWindow;
+                loadingWindow.Show();
+                workspaceWindow?.Close();
+                workspaceWindow = null;
+            });
+
+            // Progress<T> must be created on the UI thread so its callback marshals back automatically.
+            await Dispatcher.UIThread.InvokeAsync(async () =>
+            {
+                var progress = new Progress<string>(msg => loadingViewModel.AppendStatus(msg));
+                await mainWindowViewModel.LoadWorkspaceAsync(selectedWorkspace, progress);
+            });
+        }
+
         // All work is done — switch to the main window on the UI thread.
         await Dispatcher.UIThread.InvokeAsync(() =>
         {
-            if (selectedWorkspace is not null)
-                mainWindowViewModel.LoadWorkspace(selectedWorkspace);
-
             var mainWindow = new MainWindow();
             mainWindow.DataContext = mainWindowViewModel;
 
@@ -161,6 +182,7 @@ public partial class App : Application
             desktopLifetime.MainWindow = mainWindow;
             mainWindow.Show();
 
+            loadingWindow?.Close();
             workspaceWindow?.Close();
         });
 
