@@ -61,7 +61,7 @@ public sealed class FileSystemWatcherService : IDisposable
 
         // Structural changes (create/delete/rename) are less prone to bursts, so a shorter
         // throttle (200 ms) keeps the Solution Explorer responsive while still coalescing
-        // near-simultaneous events (e.g. atomic rename = delete + create).
+        // rapid successive events from batch file operations.
         Created = Observable
             .FromEventPattern<FileSystemEventHandler, FileSystemEventArgs>(
                 h => _watcher.Created += h,

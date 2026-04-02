@@ -325,13 +325,13 @@ public partial class SolutionExplorerViewModel : Tool, IDisposable
         if (_fsWatcher is null) return;
 
         _fsCreatedSub = _fsWatcher.Created
-            .Subscribe(e => Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(() => OnFsCreated(e)));
+            .Subscribe(e => Avalonia.Threading.Dispatcher.UIThread.Post(() => OnFsCreated(e)));
 
         _fsDeletedSub = _fsWatcher.Deleted
-            .Subscribe(e => Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(() => OnFsDeleted(e)));
+            .Subscribe(e => Avalonia.Threading.Dispatcher.UIThread.Post(() => OnFsDeleted(e)));
 
         _fsRenamedSub = _fsWatcher.Renamed
-            .Subscribe(e => Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(() => OnFsRenamed(e)));
+            .Subscribe(e => Avalonia.Threading.Dispatcher.UIThread.Post(() => OnFsRenamed(e)));
     }
 
     // ── Filesystem event handlers ──────────────────────────────────────────────
@@ -340,7 +340,36 @@ public partial class SolutionExplorerViewModel : Tool, IDisposable
     {
         var parentDir = Path.GetDirectoryName(e.FullPath);
         if (parentDir is null) return;
-        _ = RefreshDirectoryInTreeAsync(parentDir);
+
+        var parentNode = FindNodeByPath(_allNodes, parentDir);
+        if (parentNode is null) return;
+
+        // If the folder has never been expanded its children aren't in the tree yet —
+        // the next user-triggered expansion will load correct content from disk.
+        if (!parentNode.ChildrenLoaded) return;
+
+        // Guard against duplicate notifications.
+        if (parentNode.Children!.Any(
+                n => string.Equals(n.FullPath, e.FullPath, StringComparison.OrdinalIgnoreCase)))
+            return;
+
+        var name = Path.GetFileName(e.FullPath);
+        TreeNode newNode;
+        if (Directory.Exists(e.FullPath))
+        {
+            newNode = new TreeNode(
+                name, isFolder: true,
+                children: new ObservableCollection<TreeNode> { TreeNode.LoadingPlaceholder },
+                fullPath: e.FullPath, childrenLoaded: false);
+            ObserveNode(newNode);
+        }
+        else
+        {
+            newNode = new TreeNode(name, isFolder: false, fullPath: e.FullPath);
+        }
+
+        InsertNodeSorted(parentNode.Children!, newNode);
+        ApplyFilter();
     }
 
     private void OnFsDeleted(System.IO.FileSystemEventArgs e)
@@ -364,18 +393,51 @@ public partial class SolutionExplorerViewModel : Tool, IDisposable
 
     private void OnFsRenamed(System.IO.RenamedEventArgs e)
     {
-        // Reconcile the old parent (removes the old name) and the new parent (adds the
-        // new name).  When the rename is within the same directory a single reconcile is
-        // enough; when it crosses directories both parents need refreshing.
-        var oldParent = Path.GetDirectoryName(e.OldFullPath);
-        var newParent = Path.GetDirectoryName(e.FullPath);
+        // Remove the old entry (mirrors the delete fast path).
+        var oldNode = FindNodeByPath(_allNodes, e.OldFullPath);
+        if (oldNode is not null)
+            RemoveNodeFromTree(oldNode, _allNodes);
 
-        if (oldParent is not null)
-            _ = RefreshDirectoryInTreeAsync(oldParent);
+        // Insert the new entry in its parent (mirrors the create path).
+        var newParentDir = Path.GetDirectoryName(e.FullPath);
+        if (newParentDir is null)
+        {
+            if (oldNode is not null) ApplyFilter();
+            return;
+        }
 
-        if (newParent is not null &&
-            !string.Equals(newParent, oldParent, StringComparison.OrdinalIgnoreCase))
-            _ = RefreshDirectoryInTreeAsync(newParent);
+        var parentNode = FindNodeByPath(_allNodes, newParentDir);
+        if (parentNode is null || !parentNode.ChildrenLoaded)
+        {
+            if (oldNode is not null) ApplyFilter();
+            return;
+        }
+
+        // Guard against duplicates.
+        if (parentNode.Children!.Any(
+                n => string.Equals(n.FullPath, e.FullPath, StringComparison.OrdinalIgnoreCase)))
+        {
+            ApplyFilter();
+            return;
+        }
+
+        var name = Path.GetFileName(e.FullPath);
+        TreeNode newNode;
+        if (Directory.Exists(e.FullPath))
+        {
+            newNode = new TreeNode(
+                name, isFolder: true,
+                children: new ObservableCollection<TreeNode> { TreeNode.LoadingPlaceholder },
+                fullPath: e.FullPath, childrenLoaded: false);
+            ObserveNode(newNode);
+        }
+        else
+        {
+            newNode = new TreeNode(name, isFolder: false, fullPath: e.FullPath);
+        }
+
+        InsertNodeSorted(parentNode.Children!, newNode);
+        ApplyFilter();
     }
 
     /// <summary>
