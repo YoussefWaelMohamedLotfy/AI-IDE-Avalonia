@@ -50,6 +50,8 @@ public sealed class FileSystemWatcherService : IDisposable
             EnableRaisingEvents = true
         };
 
+        // File content changes are throttled more aggressively (500 ms) because editors
+        // often trigger multiple rapid write events for a single logical save operation.
         Changed = Observable
             .FromEventPattern<FileSystemEventHandler, FileSystemEventArgs>(
                 h => _watcher.Changed += h,
@@ -57,6 +59,9 @@ public sealed class FileSystemWatcherService : IDisposable
             .Select(e => e.EventArgs)
             .Throttle(TimeSpan.FromMilliseconds(500));
 
+        // Structural changes (create/delete/rename) are less prone to bursts, so a shorter
+        // throttle (200 ms) keeps the Solution Explorer responsive while still coalescing
+        // near-simultaneous events (e.g. atomic rename = delete + create).
         Created = Observable
             .FromEventPattern<FileSystemEventHandler, FileSystemEventArgs>(
                 h => _watcher.Created += h,

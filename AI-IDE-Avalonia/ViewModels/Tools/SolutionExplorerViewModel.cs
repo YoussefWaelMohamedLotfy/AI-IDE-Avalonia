@@ -430,7 +430,7 @@ public partial class SolutionExplorerViewModel : Tool, IDisposable
             // node is a folder: comes before files; skip over other folders in alpha order.
             if (node.IsFolder && !existing.IsFolder) break;
             // node is a file: comes after folders.
-            if (!node.IsFolder && existing.IsFolder) { i++; continue; }
+            if (!node.IsFolder && existing.IsFolder) continue;
 
             if (string.Compare(node.Name, existing.Name, StringComparison.OrdinalIgnoreCase) <= 0)
                 break;

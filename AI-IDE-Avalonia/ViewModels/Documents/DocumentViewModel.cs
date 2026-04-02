@@ -155,7 +155,6 @@ public partial class DocumentViewModel : Document, IDockCommandBarProvider, IAsy
                     await Dispatcher.UIThread.InvokeAsync(() =>
                     {
                         DocumentText = newText;
-                        MarkSaved();
                     });
                 }
                 catch (Exception ex)
@@ -182,7 +181,6 @@ public partial class DocumentViewModel : Document, IDockCommandBarProvider, IAsy
     public ValueTask DisposeAsync()
     {
         _fileWatchSubscription?.Dispose();
-        _fileWatchSubscription = null;
 
         Disposing?.Invoke(this, EventArgs.Empty);
 
