@@ -29,6 +29,8 @@ public partial class MainWindowViewModel : ObservableObject
     private Func<Task>? _saveLayoutFunc;
     private Action? _closeLayoutFunc;
     private Action? _toggleThemeAction;
+    private Func<Task>? _saveDocumentFunc;
+    private Func<Task>? _saveAllDocumentsFunc;
 
     [ObservableProperty] private bool _isBackstageOpen;
     [ObservableProperty] private string _appTitle = "Avalonia AI IDE";
@@ -48,6 +50,12 @@ public partial class MainWindowViewModel : ObservableObject
     }
 
     public ICommand NewLayout { get; }
+
+    /// <summary>Saves the currently active document to disk (shows Save As if needed).</summary>
+    public ICommand SaveDocumentCommand { get; }
+
+    /// <summary>Saves all open documents that have a file path.</summary>
+    public ICommand SaveAllDocumentsCommand { get; }
 
     public RibbonViewModel Ribbon { get; }
     public IRibbonCommandCatalog CommandCatalog => _catalogImpl;
@@ -83,6 +91,9 @@ public partial class MainWindowViewModel : ObservableObject
 
         NewLayout = new RelayCommand(ResetLayout);
 
+        SaveDocumentCommand     = new AsyncRelayCommand(() => _saveDocumentFunc?.Invoke()     ?? Task.CompletedTask);
+        SaveAllDocumentsCommand = new AsyncRelayCommand(() => _saveAllDocumentsFunc?.Invoke() ?? Task.CompletedTask);
+
         Ribbon = IdeRibbonFactory.BuildRibbon();
         _catalogImpl = IdeRibbonFactory.BuildCommandCatalog(id => GlobalStatus = $"Ribbon: {id}");
 
@@ -98,6 +109,10 @@ public partial class MainWindowViewModel : ObservableObject
         _catalogImpl.Register("layout-save",  new AsyncRelayCommand(() => _saveLayoutFunc?.Invoke()  ?? Task.CompletedTask));
         _catalogImpl.Register("layout-close", new RelayCommand(()         => _closeLayoutFunc?.Invoke()));
 
+        // Document save commands — delegates set later via WireDocumentIO (need visual root).
+        _catalogImpl.Register("save",     new AsyncRelayCommand(() => _saveDocumentFunc?.Invoke()     ?? Task.CompletedTask));
+        _catalogImpl.Register("save-all", new AsyncRelayCommand(() => _saveAllDocumentsFunc?.Invoke() ?? Task.CompletedTask));
+
         // Window commands
         _catalogImpl.Register("layout-exit-windows", new RelayCommand(() => Layout?.ExitWindows?.Execute(null)));
         _catalogImpl.Register("layout-show-windows", new RelayCommand(() => Layout?.ShowWindows?.Execute(null)));
@@ -110,8 +125,8 @@ public partial class MainWindowViewModel : ObservableObject
         BackstageItems = IdeRibbonFactory.BuildBackstageItems(
             newCmd:     new RelayCommand(() => { GlobalStatus = "Ribbon: New File";  IsBackstageOpen = false; }),
             openCmd:    new RelayCommand(() => { GlobalStatus = "Ribbon: Open File"; IsBackstageOpen = false; }),
-            saveCmd:    new RelayCommand(() => { GlobalStatus = "Ribbon: Save";      IsBackstageOpen = false; }),
-            saveAllCmd: new RelayCommand(() => { GlobalStatus = "Ribbon: Save All";  IsBackstageOpen = false; })
+            saveCmd:    new AsyncRelayCommand(async () => { IsBackstageOpen = false; await (_saveDocumentFunc?.Invoke()     ?? Task.CompletedTask); }),
+            saveAllCmd: new AsyncRelayCommand(async () => { IsBackstageOpen = false; await (_saveAllDocumentsFunc?.Invoke() ?? Task.CompletedTask); })
         );
     }
 
@@ -120,6 +135,12 @@ public partial class MainWindowViewModel : ObservableObject
         _openLayoutFunc  = open;
         _saveLayoutFunc  = save;
         _closeLayoutFunc = close;
+    }
+
+    internal void WireDocumentIO(Func<Task> saveDocument, Func<Task> saveAllDocuments)
+    {
+        _saveDocumentFunc     = saveDocument;
+        _saveAllDocumentsFunc = saveAllDocuments;
     }
 
     internal void WireToggleTheme(Action toggleTheme) => _toggleThemeAction = toggleTheme;

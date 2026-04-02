@@ -12,7 +12,9 @@ using Dock.Model;
 using Dock.Model.Controls;
 using Dock.Model.Core;
 using Dock.Serializer.SystemTextJson;
+using AI_IDE_Avalonia.Services;
 using AI_IDE_Avalonia.ViewModels;
+using AI_IDE_Avalonia.ViewModels.Documents;
 
 namespace AI_IDE_Avalonia.Views;
 
@@ -35,6 +37,7 @@ public partial class MainView : UserControl
     {
         if (DataContext is not MainWindowViewModel vm) return;
         vm.WireLayoutIO(() => OpenLayout(), () => SaveLayout(), CloseLayout);
+        vm.WireDocumentIO(() => SaveActiveDocument(), () => SaveAllDocuments());
         vm.WireToggleTheme(() =>
         {
             _isDark = !_isDark;
@@ -151,5 +154,43 @@ public partial class MainView : UserControl
             mainWindowViewModel.CloseLayout();
             mainWindowViewModel.Layout = null;
         }
+    }
+
+    // ── Document save ──────────────────────────────────────────────────────────
+
+    private async Task SaveActiveDocument()
+    {
+        var doc = DocumentService.Instance.ActiveDocument;
+        if (doc is null) return;
+
+        if (await doc.SaveAsync())
+            return;
+
+        // No file path — show a Save As dialog.
+        var topLevel = this.GetVisualRoot() as TopLevel;
+        var suggestedName = doc.BaseTitle.Length > 0 ? doc.BaseTitle : "untitled";
+        var path = await AI_IDE_Avalonia.Services.StorageDialogHelper.PromptSavePathAsync(topLevel, suggestedName);
+        if (path is not null)
+        {
+            doc.FilePath = path;
+            await doc.SaveAsync();
+        }
+    }
+
+    private async Task SaveAllDocuments()
+    {
+        foreach (DocumentViewModel doc in DocumentService.Instance.AllDocuments)
+        {
+            if (doc.FilePath is not null)
+                await doc.SaveAsync();
+            // In-memory documents are skipped for Save All — they require explicit Save As.
+        }
+    }
+
+    /// <summary>Shows a Save File dialog and returns the chosen path, or <see langword="null"/> if cancelled.</summary>
+    private Task<string?> PromptSavePathAsync(string suggestedName)
+    {
+        var topLevel = this.GetVisualRoot() as TopLevel;
+        return AI_IDE_Avalonia.Services.StorageDialogHelper.PromptSavePathAsync(topLevel, suggestedName);
     }
 }

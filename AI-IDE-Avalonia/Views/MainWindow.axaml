@@ -31,6 +31,10 @@
   <Design.DataContext>
     <vm:MainWindowViewModel />
   </Design.DataContext>
+  <Window.KeyBindings>
+    <KeyBinding Gesture="Ctrl+S"       Command="{Binding SaveDocumentCommand}" />
+    <KeyBinding Gesture="Ctrl+Shift+S" Command="{Binding SaveAllDocumentsCommand}" />
+  </Window.KeyBindings>
   <Panel>
     <ExperimentalAcrylicBorder IsHitTestVisible="False" Material="{StaticResource AcrylicMaterial}" />
     <Panel Margin="{Binding #MainWindowView.OffScreenMargin}">
