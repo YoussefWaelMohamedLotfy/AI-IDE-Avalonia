@@ -1,12 +1,15 @@
 using System;
 using System.ComponentModel;
+using System.Threading.Tasks;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Media;
+using Avalonia.Platform.Storage;
 using Avalonia.Styling;
+using Avalonia.VisualTree;
 using AvaloniaEdit;
 using AvaloniaEdit.Editing;
 using AvaloniaEdit.Indentation.CSharp;
@@ -34,6 +37,9 @@ public partial class DocumentView : UserControl
     private DocumentViewModel? _currentVm;
     private bool _disposed;
 
+    // Prevents marking the document as modified while text is being loaded programmatically.
+    private bool _suppressTextChanged;
+
     public DocumentView()
     {
         InitializeComponent();
@@ -60,6 +66,8 @@ public partial class DocumentView : UserControl
         _editor.AddHandler(PointerWheelChangedEvent, OnEditorPointerWheel,
             RoutingStrategies.Bubble, handledEventsToo: true);
         _editor.TextArea.Caret.PositionChanged += OnCaretPositionChanged;
+        _editor.TextChanged += OnEditorTextChanged;
+        _editor.TextArea.AddHandler(KeyDownEvent, OnEditorKeyDown, RoutingStrategies.Tunnel);
 
         WireContextMenu();
 
@@ -159,6 +167,8 @@ public partial class DocumentView : UserControl
 
         // 2. Detach all editor event handlers to allow the editor tree to be GC'd cleanly.
         _editor.TextArea.Caret.PositionChanged -= OnCaretPositionChanged;
+        _editor.TextChanged -= OnEditorTextChanged;
+        _editor.TextArea.RemoveHandler(KeyDownEvent, OnEditorKeyDown);
         _editor.RemoveHandler(PointerWheelChangedEvent, OnEditorPointerWheel);
 
         if (_wordWrapToggle is not null)
@@ -198,13 +208,21 @@ public partial class DocumentView : UserControl
 
         if (e.PropertyName == nameof(DocumentViewModel.DocumentText)
             && vm.DocumentText != _editor.Text)
+        {
+            _suppressTextChanged = true;
             _editor.Text = vm.DocumentText;
+            _suppressTextChanged = false;
+        }
     }
 
     private void ApplyViewModelState(DocumentViewModel vm)
     {
         if (!string.IsNullOrEmpty(vm.DocumentText))
+        {
+            _suppressTextChanged = true;
             _editor.Text = vm.DocumentText;
+            _suppressTextChanged = false;
+        }
 
         ApplyThemeFromAppVariant();
         ApplyLanguageByExtension(vm.SelectedLanguageExtension);
@@ -357,5 +375,47 @@ public partial class DocumentView : UserControl
         if (copy is not null)      copy.Click      += (_, _) => ApplicationCommands.Copy.Execute(null, area);
         if (paste is not null)     paste.Click     += (_, _) => ApplicationCommands.Paste.Execute(null, area);
         if (selectAll is not null) selectAll.Click += (_, _) => ApplicationCommands.SelectAll.Execute(null, area);
+    }
+
+    // ── Save support ──────────────────────────────────────────────────────────
+
+    private void OnEditorTextChanged(object? sender, EventArgs e)
+    {
+        if (_suppressTextChanged || _currentVm is null) return;
+        // Sync the text back to the ViewModel and mark the document dirty.
+        _currentVm.DocumentText = _editor.Text;
+        _currentVm.MarkModified();
+    }
+
+    private void OnEditorKeyDown(object? sender, KeyEventArgs e)
+    {
+        if (e.Key == Key.S && e.KeyModifiers == KeyModifiers.Control)
+        {
+            e.Handled = true;
+            _ = SaveCurrentDocumentAsync();
+        }
+    }
+
+    /// <summary>
+    /// Saves the current document to disk.
+    /// If the document has no associated file path a Save As dialog is shown first.
+    /// </summary>
+    private async Task SaveCurrentDocumentAsync()
+    {
+        if (_currentVm is null) return;
+
+        if (await _currentVm.SaveAsync())
+            return;
+
+        // Document has no file path — prompt for one.
+        var topLevel = this.GetVisualRoot() as TopLevel;
+        var path = await AI_IDE_Avalonia.Services.StorageDialogHelper.PromptSavePathAsync(
+            topLevel, _currentVm.BaseTitle.Length > 0 ? _currentVm.BaseTitle : "untitled");
+
+        if (path is not null)
+        {
+            _currentVm.FilePath = path;
+            await _currentVm.SaveAsync();
+        }
     }
 }

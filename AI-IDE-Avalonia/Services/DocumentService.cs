@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using AI_IDE_Avalonia.ViewModels.Documents;
@@ -24,6 +25,14 @@ public sealed class DocumentService
     /// </summary>
     public DocumentViewModel? ActiveDocument =>
         DocumentDock?.ActiveDockable as DocumentViewModel;
+
+    /// <summary>
+    /// Returns all currently open document tabs.
+    /// Must be called on the UI thread.
+    /// </summary>
+    public IEnumerable<DocumentViewModel> AllDocuments =>
+        DocumentDock?.VisibleDockables?.OfType<DocumentViewModel>()
+        ?? Enumerable.Empty<DocumentViewModel>();
 
     /// <summary>
     /// Returns the active document if one is open; otherwise creates a new document tab,
@@ -94,8 +103,9 @@ public sealed class DocumentService
         var index = (DocumentDock?.VisibleDockables?.Count ?? 0) + 1;
         var doc = new DocumentViewModel
         {
-            Id    = filePath ?? $"Document{index}",
-            Title = title,
+            Id       = filePath ?? $"Document{index}",
+            Title    = title,
+            FilePath = filePath,
             SelectedLanguageExtension = Path.GetExtension(filePath ?? title),
         };
 
