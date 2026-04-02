@@ -4,6 +4,7 @@ using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.IO;
 using System.Linq;
+using System.Reactive.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -16,7 +17,7 @@ using Dock.Model.Mvvm.Controls;
 
 namespace AI_IDE_Avalonia.ViewModels.Tools;
 
-public partial class SolutionExplorerViewModel : Tool
+public partial class SolutionExplorerViewModel : Tool, IDisposable
 {
     // Root nodes (one per open workspace root).
     private readonly ObservableCollection<TreeNode> _allNodes = TreeNode.CreateSampleProject();
@@ -52,6 +53,13 @@ public partial class SolutionExplorerViewModel : Tool
 
     // Cancels any in-progress async filter when the user types a new query.
     private CancellationTokenSource? _filterCts;
+
+    // ── File-system watching ───────────────────────────────────────────────────
+
+    private FileSystemWatcherService? _fsWatcher;
+    private IDisposable? _fsCreatedSub;
+    private IDisposable? _fsDeletedSub;
+    private IDisposable? _fsRenamedSub;
 
     // Debounce delay: wait this long after the last keystroke before searching.
     private static readonly TimeSpan FilterDebounce = TimeSpan.FromMilliseconds(300);
@@ -270,7 +278,12 @@ public partial class SolutionExplorerViewModel : Tool
         ApplyFilter();
 
         progress?.Report("Workspace loaded successfully.");
+
+        // ── Start watching for external filesystem changes ────────────────────
+        StartWatchingWorkspace(folderPath);
     }
+
+    // ── Synchronous wrapper ────────────────────────────────────────────────────
 
     /// <summary>
     /// Synchronous wrapper — delegates to <see cref="LoadWorkspaceAsync"/> and waits.
@@ -278,6 +291,325 @@ public partial class SolutionExplorerViewModel : Tool
     /// </summary>
     public void LoadWorkspace(string folderPath) =>
         LoadWorkspaceAsync(folderPath).GetAwaiter().GetResult();
+
+    // ── File-system watcher lifecycle ──────────────────────────────────────────
+
+    /// <summary>
+    /// Starts (or restarts) the <see cref="FileSystemWatcherService"/> for
+    /// <paramref name="rootPath"/> and subscribes to created/deleted/renamed events so that
+    /// the in-memory tree stays in sync with the filesystem.
+    /// Also notifies <see cref="DocumentService"/> so open documents can watch their files.
+    /// </summary>
+    private void StartWatchingWorkspace(string rootPath)
+    {
+        // Tear down any previous watcher.
+        _fsCreatedSub?.Dispose();
+        _fsDeletedSub?.Dispose();
+        _fsRenamedSub?.Dispose();
+        _fsWatcher?.Dispose();
+        _fsWatcher = null;
+
+        try
+        {
+            _fsWatcher = new FileSystemWatcherService(rootPath);
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine(
+                $"[SolutionExplorer] Could not start watcher for '{rootPath}': {ex.Message}");
+        }
+
+        // Also tell DocumentService so newly-opened documents can track their files.
+        DocumentService.Instance.SetWorkspaceWatcher(rootPath);
+
+        if (_fsWatcher is null) return;
+
+        _fsCreatedSub = _fsWatcher.Created
+            .Subscribe(e => Avalonia.Threading.Dispatcher.UIThread.Post(() => OnFsCreated(e)));
+
+        _fsDeletedSub = _fsWatcher.Deleted
+            .Subscribe(e => Avalonia.Threading.Dispatcher.UIThread.Post(() => OnFsDeleted(e)));
+
+        _fsRenamedSub = _fsWatcher.Renamed
+            .Subscribe(e => Avalonia.Threading.Dispatcher.UIThread.Post(() => OnFsRenamed(e)));
+    }
+
+    // ── Filesystem event handlers ──────────────────────────────────────────────
+
+    private void OnFsCreated(System.IO.FileSystemEventArgs e)
+    {
+        var parentDir = Path.GetDirectoryName(e.FullPath);
+        if (parentDir is null) return;
+
+        var parentNode = FindNodeByPath(_allNodes, parentDir);
+        if (parentNode is null) return;
+
+        // If the folder has never been expanded its children aren't in the tree yet —
+        // the next user-triggered expansion will load correct content from disk.
+        if (!parentNode.ChildrenLoaded) return;
+
+        // Guard against duplicate notifications.
+        if (parentNode.Children!.Any(
+                n => string.Equals(n.FullPath, e.FullPath, StringComparison.OrdinalIgnoreCase)))
+            return;
+
+        var name = Path.GetFileName(e.FullPath);
+        TreeNode newNode;
+        if (Directory.Exists(e.FullPath))
+        {
+            newNode = new TreeNode(
+                name, isFolder: true,
+                children: new ObservableCollection<TreeNode> { TreeNode.LoadingPlaceholder },
+                fullPath: e.FullPath, childrenLoaded: false);
+            ObserveNode(newNode);
+        }
+        else
+        {
+            newNode = new TreeNode(name, isFolder: false, fullPath: e.FullPath);
+        }
+
+        InsertNodeSorted(parentNode.Children!, newNode);
+        ApplyFilter();
+    }
+
+    private void OnFsDeleted(System.IO.FileSystemEventArgs e)
+    {
+        // Fast path: if the exact node is already visible in the tree, remove it immediately
+        // without a disk round-trip.  This keeps the deletion feel snappy.
+        var node = FindNodeByPath(_allNodes, e.FullPath);
+        if (node is not null)
+        {
+            RemoveNodeFromTree(node, _allNodes);
+            ApplyFilter();
+            return;
+        }
+
+        // Fallback for nodes that were never visible: rescan the parent so the tree stays
+        // consistent (e.g. a folder was deleted and its sibling list needs refreshing).
+        var parentDir = Path.GetDirectoryName(e.FullPath);
+        if (parentDir is not null)
+            _ = RefreshDirectoryInTreeAsync(parentDir);
+    }
+
+    private void OnFsRenamed(System.IO.RenamedEventArgs e)
+    {
+        // Remove the old entry (mirrors the delete fast path).
+        var oldNode = FindNodeByPath(_allNodes, e.OldFullPath);
+        if (oldNode is not null)
+            RemoveNodeFromTree(oldNode, _allNodes);
+
+        // Insert the new entry in its parent (mirrors the create path).
+        var newParentDir = Path.GetDirectoryName(e.FullPath);
+        if (newParentDir is null)
+        {
+            if (oldNode is not null) ApplyFilter();
+            return;
+        }
+
+        var parentNode = FindNodeByPath(_allNodes, newParentDir);
+        if (parentNode is null || !parentNode.ChildrenLoaded)
+        {
+            if (oldNode is not null) ApplyFilter();
+            return;
+        }
+
+        // Guard against duplicates.
+        if (parentNode.Children!.Any(
+                n => string.Equals(n.FullPath, e.FullPath, StringComparison.OrdinalIgnoreCase)))
+        {
+            ApplyFilter();
+            return;
+        }
+
+        var name = Path.GetFileName(e.FullPath);
+        TreeNode newNode;
+        if (Directory.Exists(e.FullPath))
+        {
+            newNode = new TreeNode(
+                name, isFolder: true,
+                children: new ObservableCollection<TreeNode> { TreeNode.LoadingPlaceholder },
+                fullPath: e.FullPath, childrenLoaded: false);
+            ObserveNode(newNode);
+        }
+        else
+        {
+            newNode = new TreeNode(name, isFolder: false, fullPath: e.FullPath);
+        }
+
+        InsertNodeSorted(parentNode.Children!, newNode);
+        ApplyFilter();
+    }
+
+    /// <summary>
+    /// Rescans the directory at <paramref name="dirFullPath"/> from disk and reconciles its
+    /// children with the current in-memory tree:
+    /// <list type="bullet">
+    ///   <item>Entries present on disk but missing from the tree are inserted in sorted order.</item>
+    ///   <item>Entries in the tree that are no longer on disk are removed.</item>
+    ///   <item>Entries present in both disk and tree are left untouched (preserving expand state).</item>
+    /// </list>
+    /// When the parent folder has never been expanded (<see cref="TreeNode.ChildrenLoaded"/> is
+    /// <see langword="false"/>) the reconcile is skipped — the next user-triggered expansion will
+    /// load the correct content from disk automatically.
+    /// </summary>
+    private async Task RefreshDirectoryInTreeAsync(string dirFullPath)
+    {
+        var parentNode = FindNodeByPath(_allNodes, dirFullPath);
+        if (parentNode is null) return;
+
+        if (!parentNode.ChildrenLoaded)
+        {
+            // The folder has never been expanded.  If it is currently open, trigger a full
+            // load; otherwise wait for the user to expand it (it will scan from disk then).
+            if (parentNode.IsExpanded)
+                await LoadNodeChildrenAsync(parentNode);
+            return;
+        }
+
+        // Scan the directory contents on the thread pool.
+        DirectoryInfo dir;
+        DirectoryInfo[] subDirs;
+        FileInfo[] files;
+
+        try
+        {
+            dir = new DirectoryInfo(dirFullPath);
+            if (!dir.Exists)
+            {
+                // The directory itself was deleted — clear its children.
+                parentNode.Children?.Clear();
+                ApplyFilter();
+                return;
+            }
+
+            (subDirs, files) = await Task.Run(() =>
+            {
+                DirectoryInfo[] d;
+                FileInfo[] f;
+                try
+                {
+                    d = dir.GetDirectories()
+                            .Where(x => (x.Attributes & FileAttributes.Hidden) == 0)
+                            .OrderBy(x => x.Name, StringComparer.OrdinalIgnoreCase)
+                            .ToArray();
+                    f = dir.GetFiles()
+                            .Where(x => (x.Attributes & FileAttributes.Hidden) == 0)
+                            .OrderBy(x => x.Name, StringComparer.OrdinalIgnoreCase)
+                            .ToArray();
+                }
+                catch (UnauthorizedAccessException)
+                {
+                    d = [];
+                    f = [];
+                }
+                return (d, f);
+            });
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            System.Diagnostics.Debug.WriteLine(
+                $"[SolutionExplorer] RefreshDirectory failed for '{dirFullPath}': {ex.Message}");
+            return;
+        }
+
+        // ── Reconcile on the UI thread ─────────────────────────────────────────
+
+        // Build a set of all paths currently on disk (for O(1) lookup).
+        var diskPaths = new HashSet<string>(
+            subDirs.Select(x => x.FullName).Concat(files.Select(x => x.FullName)),
+            StringComparer.OrdinalIgnoreCase);
+
+        // 1. Remove tree nodes that are no longer on disk.
+        var toRemove = parentNode.Children!
+            .Where(c => !c.IsLoadingPlaceholder
+                        && c.FullPath is not null
+                        && !diskPaths.Contains(c.FullPath!))
+            .ToList();
+        foreach (var c in toRemove)
+            parentNode.Children!.Remove(c);
+
+        // Build a set of paths already in the tree (after removal) for the add pass.
+        var existingPaths = new HashSet<string>(
+            parentNode.Children!
+                .Where(c => c.FullPath is not null)
+                .Select(c => c.FullPath!),
+            StringComparer.OrdinalIgnoreCase);
+
+        // 2. Add disk entries that are missing from the tree.
+        foreach (var subDir in subDirs.Where(x => !existingPaths.Contains(x.FullName)))
+        {
+            var child = new TreeNode(
+                subDir.Name,
+                isFolder: true,
+                children: new ObservableCollection<TreeNode> { TreeNode.LoadingPlaceholder },
+                fullPath: subDir.FullName,
+                childrenLoaded: false);
+            ObserveNode(child);
+            InsertNodeSorted(parentNode.Children!, child);
+        }
+
+        foreach (var file in files.Where(x => !existingPaths.Contains(x.FullName)))
+            InsertNodeSorted(parentNode.Children!, new TreeNode(file.Name, isFolder: false, fullPath: file.FullName));
+
+        ApplyFilter();
+    }
+
+    // ── Tree helpers ───────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Finds the node whose <see cref="TreeNode.FullPath"/> matches <paramref name="fullPath"/>
+    /// (case-insensitive), searching the entire loaded tree.
+    /// </summary>
+    private static TreeNode? FindNodeByPath(IEnumerable<TreeNode> nodes, string fullPath)
+    {
+        foreach (var node in nodes)
+        {
+            if (node.IsLoadingPlaceholder) continue;
+            if (string.Equals(node.FullPath, fullPath, StringComparison.OrdinalIgnoreCase))
+                return node;
+            if (node.Children is { Count: > 0 })
+            {
+                var found = FindNodeByPath(node.Children, fullPath);
+                if (found is not null) return found;
+            }
+        }
+        return null;
+    }
+
+    /// <summary>
+    /// Inserts <paramref name="node"/> into <paramref name="collection"/> in alphabetical order,
+    /// placing folder nodes before file nodes (matching the existing tree convention).
+    /// </summary>
+    private static void InsertNodeSorted(ObservableCollection<TreeNode> collection, TreeNode node)
+    {
+        // Find the insertion index: folders before files, then alphabetical within each group.
+        int i = 0;
+        for (; i < collection.Count; i++)
+        {
+            var existing = collection[i];
+            if (existing.IsLoadingPlaceholder) continue;
+
+            // node is a folder: comes before files; skip over other folders in alpha order.
+            if (node.IsFolder && !existing.IsFolder) break;
+            // node is a file: comes after folders.
+            if (!node.IsFolder && existing.IsFolder) continue;
+
+            if (string.Compare(node.Name, existing.Name, StringComparison.OrdinalIgnoreCase) <= 0)
+                break;
+        }
+        collection.Insert(i, node);
+    }
+
+    // ── IDisposable ────────────────────────────────────────────────────────────
+
+    public void Dispose()
+    {
+        _fsCreatedSub?.Dispose();
+        _fsDeletedSub?.Dispose();
+        _fsRenamedSub?.Dispose();
+        _fsWatcher?.Dispose();
+        _filterCts?.Dispose();
+    }
 
     // ── Shallow tree builder ───────────────────────────────────────────────────
 
