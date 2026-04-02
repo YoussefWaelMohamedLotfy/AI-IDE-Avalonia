@@ -342,19 +342,34 @@ public partial class SolutionExplorerViewModel : Tool, IDisposable
         if (parentDir is null) return;
 
         var parentNode = FindNodeByPath(_allNodes, parentDir);
-        if (parentNode is null || !parentNode.ChildrenLoaded) return;
+        if (parentNode is null) return;
+
+        // When the parent folder's children haven't been loaded yet (ChildrenLoaded = false),
+        // eagerly load them from disk now.  This ensures the new entry becomes visible either
+        // immediately (folder already expanded) or as soon as the user expands it without the
+        // stale LoadingPlaceholder blocking the view.  LoadNodeChildrenAsync is a no-op when
+        // ChildrenLoaded is already true, so the call is always safe.
+        if (!parentNode.ChildrenLoaded)
+        {
+            _ = LoadNodeChildrenAsync(parentNode);
+            return;
+        }
 
         // Avoid duplicates (watcher can fire more than once for the same path).
         if (parentNode.Children!.Any(n => string.Equals(n.FullPath, e.FullPath, StringComparison.OrdinalIgnoreCase)))
             return;
 
+        // Always derive the display name from the full path; e.Name contains the path
+        // relative to the watched root (e.g. "src/newfile.ts") for deep files, which would
+        // produce an incorrect node label.
+        var name = Path.GetFileName(e.FullPath);
         bool isDir = Directory.Exists(e.FullPath);
         TreeNode newNode;
 
         if (isDir)
         {
             newNode = new TreeNode(
-                e.Name ?? Path.GetFileName(e.FullPath),
+                name,
                 isFolder: true,
                 children: new ObservableCollection<TreeNode> { TreeNode.LoadingPlaceholder },
                 fullPath: e.FullPath,
@@ -363,10 +378,7 @@ public partial class SolutionExplorerViewModel : Tool, IDisposable
         }
         else
         {
-            newNode = new TreeNode(
-                e.Name ?? Path.GetFileName(e.FullPath),
-                isFolder: false,
-                fullPath: e.FullPath);
+            newNode = new TreeNode(name, isFolder: false, fullPath: e.FullPath);
         }
 
         // Insert in sorted order (folders first, then files — matching the existing convention).
@@ -386,10 +398,17 @@ public partial class SolutionExplorerViewModel : Tool, IDisposable
     private void OnFsRenamed(System.IO.RenamedEventArgs e)
     {
         // Treat rename as delete-old + create-new so the sorted position is correct.
+        // Build the synthetic events from the full paths so that FullPath is computed
+        // correctly for files inside subdirectories (e.OldName / e.Name are relative
+        // to the watched root and would produce doubled path segments otherwise).
         OnFsDeleted(new System.IO.FileSystemEventArgs(
-            System.IO.WatcherChangeTypes.Deleted, Path.GetDirectoryName(e.OldFullPath) ?? "", e.OldName));
+            System.IO.WatcherChangeTypes.Deleted,
+            Path.GetDirectoryName(e.OldFullPath) ?? "",
+            Path.GetFileName(e.OldFullPath)));
         OnFsCreated(new System.IO.FileSystemEventArgs(
-            System.IO.WatcherChangeTypes.Created, Path.GetDirectoryName(e.FullPath) ?? "", e.Name));
+            System.IO.WatcherChangeTypes.Created,
+            Path.GetDirectoryName(e.FullPath) ?? "",
+            Path.GetFileName(e.FullPath)));
     }
 
     // ── Tree helpers ───────────────────────────────────────────────────────────
