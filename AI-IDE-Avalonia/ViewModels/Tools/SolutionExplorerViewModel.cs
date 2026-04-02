@@ -340,75 +340,156 @@ public partial class SolutionExplorerViewModel : Tool, IDisposable
     {
         var parentDir = Path.GetDirectoryName(e.FullPath);
         if (parentDir is null) return;
-
-        var parentNode = FindNodeByPath(_allNodes, parentDir);
-        if (parentNode is null) return;
-
-        // When the parent folder's children haven't been loaded yet (ChildrenLoaded = false),
-        // eagerly load them from disk now.  This ensures the new entry becomes visible either
-        // immediately (folder already expanded) or as soon as the user expands it without the
-        // stale LoadingPlaceholder blocking the view.  LoadNodeChildrenAsync is a no-op when
-        // ChildrenLoaded is already true, so the call is always safe.
-        if (!parentNode.ChildrenLoaded)
-        {
-            _ = LoadNodeChildrenAsync(parentNode);
-            return;
-        }
-
-        // Avoid duplicates (watcher can fire more than once for the same path).
-        if (parentNode.Children!.Any(n => string.Equals(n.FullPath, e.FullPath, StringComparison.OrdinalIgnoreCase)))
-            return;
-
-        // Always derive the display name from the full path; e.Name contains the path
-        // relative to the watched root (e.g. "src/newfile.ts") for deep files, which would
-        // produce an incorrect node label.
-        var name = Path.GetFileName(e.FullPath);
-        bool isDir = Directory.Exists(e.FullPath);
-        TreeNode newNode;
-
-        if (isDir)
-        {
-            newNode = new TreeNode(
-                name,
-                isFolder: true,
-                children: new ObservableCollection<TreeNode> { TreeNode.LoadingPlaceholder },
-                fullPath: e.FullPath,
-                childrenLoaded: false);
-            ObserveNode(newNode);
-        }
-        else
-        {
-            newNode = new TreeNode(name, isFolder: false, fullPath: e.FullPath);
-        }
-
-        // Insert in sorted order (folders first, then files — matching the existing convention).
-        InsertNodeSorted(parentNode.Children!, newNode);
-        ApplyFilter();
+        _ = RefreshDirectoryInTreeAsync(parentDir);
     }
 
     private void OnFsDeleted(System.IO.FileSystemEventArgs e)
     {
+        // Fast path: if the exact node is already visible in the tree, remove it immediately
+        // without a disk round-trip.  This keeps the deletion feel snappy.
         var node = FindNodeByPath(_allNodes, e.FullPath);
-        if (node is null) return;
+        if (node is not null)
+        {
+            RemoveNodeFromTree(node, _allNodes);
+            ApplyFilter();
+            return;
+        }
 
-        RemoveNodeFromTree(node, _allNodes);
-        ApplyFilter();
+        // Fallback for nodes that were never visible: rescan the parent so the tree stays
+        // consistent (e.g. a folder was deleted and its sibling list needs refreshing).
+        var parentDir = Path.GetDirectoryName(e.FullPath);
+        if (parentDir is not null)
+            _ = RefreshDirectoryInTreeAsync(parentDir);
     }
 
     private void OnFsRenamed(System.IO.RenamedEventArgs e)
     {
-        // Treat rename as delete-old + create-new so the sorted position is correct.
-        // Build the synthetic events from the full paths so that FullPath is computed
-        // correctly for files inside subdirectories (e.OldName / e.Name are relative
-        // to the watched root and would produce doubled path segments otherwise).
-        OnFsDeleted(new System.IO.FileSystemEventArgs(
-            System.IO.WatcherChangeTypes.Deleted,
-            Path.GetDirectoryName(e.OldFullPath) ?? "",
-            Path.GetFileName(e.OldFullPath)));
-        OnFsCreated(new System.IO.FileSystemEventArgs(
-            System.IO.WatcherChangeTypes.Created,
-            Path.GetDirectoryName(e.FullPath) ?? "",
-            Path.GetFileName(e.FullPath)));
+        // Reconcile the old parent (removes the old name) and the new parent (adds the
+        // new name).  When the rename is within the same directory a single reconcile is
+        // enough; when it crosses directories both parents need refreshing.
+        var oldParent = Path.GetDirectoryName(e.OldFullPath);
+        var newParent = Path.GetDirectoryName(e.FullPath);
+
+        if (oldParent is not null)
+            _ = RefreshDirectoryInTreeAsync(oldParent);
+
+        if (newParent is not null &&
+            !string.Equals(newParent, oldParent, StringComparison.OrdinalIgnoreCase))
+            _ = RefreshDirectoryInTreeAsync(newParent);
+    }
+
+    /// <summary>
+    /// Rescans the directory at <paramref name="dirFullPath"/> from disk and reconciles its
+    /// children with the current in-memory tree:
+    /// <list type="bullet">
+    ///   <item>Entries present on disk but missing from the tree are inserted in sorted order.</item>
+    ///   <item>Entries in the tree that are no longer on disk are removed.</item>
+    ///   <item>Entries present in both disk and tree are left untouched (preserving expand state).</item>
+    /// </list>
+    /// When the parent folder has never been expanded (<see cref="TreeNode.ChildrenLoaded"/> is
+    /// <see langword="false"/>) the reconcile is skipped — the next user-triggered expansion will
+    /// load the correct content from disk automatically.
+    /// </summary>
+    private async Task RefreshDirectoryInTreeAsync(string dirFullPath)
+    {
+        var parentNode = FindNodeByPath(_allNodes, dirFullPath);
+        if (parentNode is null) return;
+
+        if (!parentNode.ChildrenLoaded)
+        {
+            // The folder has never been expanded.  If it is currently open, trigger a full
+            // load; otherwise wait for the user to expand it (it will scan from disk then).
+            if (parentNode.IsExpanded)
+                await LoadNodeChildrenAsync(parentNode);
+            return;
+        }
+
+        // Scan the directory contents on the thread pool.
+        DirectoryInfo dir;
+        DirectoryInfo[] subDirs;
+        FileInfo[] files;
+
+        try
+        {
+            dir = new DirectoryInfo(dirFullPath);
+            if (!dir.Exists)
+            {
+                // The directory itself was deleted — clear its children.
+                parentNode.Children?.Clear();
+                ApplyFilter();
+                return;
+            }
+
+            (subDirs, files) = await Task.Run(() =>
+            {
+                DirectoryInfo[] d;
+                FileInfo[] f;
+                try
+                {
+                    d = dir.GetDirectories()
+                            .Where(x => (x.Attributes & FileAttributes.Hidden) == 0)
+                            .OrderBy(x => x.Name, StringComparer.OrdinalIgnoreCase)
+                            .ToArray();
+                    f = dir.GetFiles()
+                            .Where(x => (x.Attributes & FileAttributes.Hidden) == 0)
+                            .OrderBy(x => x.Name, StringComparer.OrdinalIgnoreCase)
+                            .ToArray();
+                }
+                catch (UnauthorizedAccessException)
+                {
+                    d = [];
+                    f = [];
+                }
+                return (d, f);
+            });
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            System.Diagnostics.Debug.WriteLine(
+                $"[SolutionExplorer] RefreshDirectory failed for '{dirFullPath}': {ex.Message}");
+            return;
+        }
+
+        // ── Reconcile on the UI thread ─────────────────────────────────────────
+
+        // Build a set of all paths currently on disk (for O(1) lookup).
+        var diskPaths = new HashSet<string>(
+            subDirs.Select(x => x.FullName).Concat(files.Select(x => x.FullName)),
+            StringComparer.OrdinalIgnoreCase);
+
+        // 1. Remove tree nodes that are no longer on disk.
+        var toRemove = parentNode.Children!
+            .Where(c => !c.IsLoadingPlaceholder
+                        && c.FullPath is not null
+                        && !diskPaths.Contains(c.FullPath!))
+            .ToList();
+        foreach (var c in toRemove)
+            parentNode.Children!.Remove(c);
+
+        // Build a set of paths already in the tree (after removal) for the add pass.
+        var existingPaths = new HashSet<string>(
+            parentNode.Children!
+                .Where(c => c.FullPath is not null)
+                .Select(c => c.FullPath!),
+            StringComparer.OrdinalIgnoreCase);
+
+        // 2. Add disk entries that are missing from the tree.
+        foreach (var subDir in subDirs.Where(x => !existingPaths.Contains(x.FullName)))
+        {
+            var child = new TreeNode(
+                subDir.Name,
+                isFolder: true,
+                children: new ObservableCollection<TreeNode> { TreeNode.LoadingPlaceholder },
+                fullPath: subDir.FullName,
+                childrenLoaded: false);
+            ObserveNode(child);
+            InsertNodeSorted(parentNode.Children!, child);
+        }
+
+        foreach (var file in files.Where(x => !existingPaths.Contains(x.FullName)))
+            InsertNodeSorted(parentNode.Children!, new TreeNode(file.Name, isFolder: false, fullPath: file.FullName));
+
+        ApplyFilter();
     }
 
     // ── Tree helpers ───────────────────────────────────────────────────────────
