@@ -38,6 +38,11 @@ public partial class SolutionExplorerView : UserControl
             OnTreePointerReleased,
             RoutingStrategies.Bubble);
 
+        tree.AddHandler(
+            Gestures.DoubleTappedEvent,
+            OnTreeDoubleTapped,
+            RoutingStrategies.Bubble);
+
         // Wire the Avalonia clipboard service once the view enters the visual tree.
         AttachedToVisualTree += (_, _) => TryWireClipboard();
         DataContextChanged    += (_, _) => TryWireClipboard();
@@ -62,6 +67,17 @@ public partial class SolutionExplorerView : UserControl
 
         var menu = BuildContextMenu(vm, node);
         menu.Open(sender as Control);
+        e.Handled = true;
+    }
+
+    private void OnTreeDoubleTapped(object? sender, TappedEventArgs e)
+    {
+        if (DataContext is not SolutionExplorerViewModel vm) return;
+
+        var node = FindTreeNode(e.Source as Visual);
+        if (node is null || node.IsFolder) return;
+
+        vm.OpenNodeCommand.Execute(node);
         e.Handled = true;
     }
 

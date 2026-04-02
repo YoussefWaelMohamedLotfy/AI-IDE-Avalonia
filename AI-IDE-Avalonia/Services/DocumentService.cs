@@ -1,3 +1,5 @@
+using System;
+using System.IO;
 using System.Linq;
 using AI_IDE_Avalonia.ViewModels.Documents;
 using Dock.Model.Controls;
@@ -49,6 +51,63 @@ public sealed class DocumentService
             Id = $"Document{index}",
             Title = title ?? $"Document{index}"
         };
+
+        DocumentDock?.Factory?.AddDockable(DocumentDock, doc);
+        DocumentDock?.Factory?.SetActiveDockable(doc);
+        DocumentDock?.Factory?.SetFocusedDockable(DocumentDock, doc);
+
+        return doc;
+    }
+
+    /// <summary>
+    /// Opens a document tab for the given file node.
+    /// <para>
+    /// When <paramref name="filePath"/> is not <see langword="null"/>, any existing tab whose
+    /// <see cref="DocumentViewModel.Id"/> matches is activated instead of opening a duplicate.
+    /// The file's contents are read into the editor and the language is selected from the
+    /// file extension.
+    /// </para>
+    /// <para>
+    /// When <paramref name="filePath"/> is <see langword="null"/> (in-memory / demo node), a new
+    /// blank tab is always created with the language inferred from the extension in
+    /// <paramref name="title"/>.
+    /// </para>
+    /// Must be called on the UI thread.
+    /// </summary>
+    public DocumentViewModel OpenDocument(string title, string? filePath)
+    {
+        // Deduplicate: if a tab for this path is already open, just activate it.
+        if (filePath is not null)
+        {
+            var existing = DocumentDock?.VisibleDockables?
+                .OfType<DocumentViewModel>()
+                .FirstOrDefault(d => d.Id == filePath);
+
+            if (existing is not null)
+            {
+                DocumentDock?.Factory?.SetActiveDockable(existing);
+                DocumentDock?.Factory?.SetFocusedDockable(DocumentDock, existing);
+                return existing;
+            }
+        }
+
+        var index = (DocumentDock?.VisibleDockables?.Count ?? 0) + 1;
+        var doc = new DocumentViewModel
+        {
+            Id    = filePath ?? $"Document{index}",
+            Title = title,
+            SelectedLanguageExtension = Path.GetExtension(filePath ?? title),
+        };
+
+        if (filePath is not null && File.Exists(filePath))
+        {
+            try { doc.DocumentText = File.ReadAllText(filePath); }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine(
+                    $"[DocumentService] Could not read '{filePath}': {ex.Message}");
+            }
+        }
 
         DocumentDock?.Factory?.AddDockable(DocumentDock, doc);
         DocumentDock?.Factory?.SetActiveDockable(doc);

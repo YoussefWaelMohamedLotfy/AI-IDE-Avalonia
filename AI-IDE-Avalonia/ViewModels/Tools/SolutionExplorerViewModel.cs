@@ -9,6 +9,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using AI_IDE_Avalonia.Collections;
 using AI_IDE_Avalonia.Models;
+using AI_IDE_Avalonia.Services;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Dock.Model.Mvvm.Controls;
@@ -581,8 +582,8 @@ public partial class SolutionExplorerViewModel : Tool
     {
         if (node is null || node.IsLoadingPlaceholder) return;
         if (node.IsFolder) { node.IsExpanded = !node.IsExpanded; return; }
-        // TODO: open in document editor
-        System.Diagnostics.Debug.WriteLine($"[SolutionExplorer] Open: {node.FullPath ?? node.Name}");
+
+        DocumentService.Instance.OpenDocument(node.Name, node.FullPath);
     }
 
     [RelayCommand]
