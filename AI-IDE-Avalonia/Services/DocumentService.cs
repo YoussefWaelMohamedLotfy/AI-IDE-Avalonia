@@ -19,6 +19,35 @@ public sealed class DocumentService
 
     internal IDocumentDock? DocumentDock { get; set; }
 
+    // ── Workspace watcher ──────────────────────────────────────────────────────
+
+    private FileSystemWatcherService? _workspaceWatcher;
+
+    /// <summary>
+    /// Creates (or replaces) the workspace-level <see cref="FileSystemWatcherService"/>
+    /// that backs per-document file watches.
+    /// Called by <see cref="ViewModels.Tools.SolutionExplorerViewModel"/> when a workspace is loaded.
+    /// </summary>
+    internal void SetWorkspaceWatcher(string rootPath)
+    {
+        _workspaceWatcher?.Dispose();
+        _workspaceWatcher = null;
+
+        if (!Directory.Exists(rootPath)) return;
+
+        try
+        {
+            _workspaceWatcher = new FileSystemWatcherService(rootPath);
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine(
+                $"[DocumentService] Could not start workspace watcher for '{rootPath}': {ex.Message}");
+        }
+    }
+
+    // ── Document access ────────────────────────────────────────────────────────
+
     /// <summary>
     /// Returns the currently active document, or <see langword="null"/> if none is open.
     /// Must be called on the UI thread.
@@ -122,6 +151,10 @@ public sealed class DocumentService
         DocumentDock?.Factory?.AddDockable(DocumentDock, doc);
         DocumentDock?.Factory?.SetActiveDockable(doc);
         DocumentDock?.Factory?.SetFocusedDockable(DocumentDock, doc);
+
+        // If a workspace watcher is active, let the document observe its file.
+        if (_workspaceWatcher is not null)
+            doc.StartWatchingFile(_workspaceWatcher);
 
         return doc;
     }

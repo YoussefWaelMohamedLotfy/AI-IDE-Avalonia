@@ -1,7 +1,10 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Reactive.Disposables;
+using System.Reactive.Linq;
 using System.Threading.Tasks;
+using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Dock.Model.CommandBars;
@@ -17,6 +20,16 @@ public partial class DocumentViewModel : Document, IDockCommandBarProvider, IAsy
 
     // The clean tab title (without the '*' dirty indicator).
     private string _baseTitle = string.Empty;
+
+    // ── External-change watching ──────────────────────────────────────────────
+
+    private IDisposable? _fileWatchSubscription;
+
+    /// <summary>
+    /// Set to <see langword="true"/> immediately before writing the file from <see cref="SaveAsync"/>
+    /// so that the resulting filesystem event is silently ignored.
+    /// </summary>
+    private bool _suppressNextExternalChange;
 
     /// <summary>The tab title without the unsaved-changes indicator ('*').</summary>
     public string BaseTitle => _baseTitle;
@@ -95,22 +108,82 @@ public partial class DocumentViewModel : Document, IDockCommandBarProvider, IAsy
 
         try
         {
+            // Suppress the filesystem change event that our own write will trigger.
+            _suppressNextExternalChange = true;
             await File.WriteAllTextAsync(FilePath, DocumentText);
             MarkSaved();
             return true;
         }
         catch (Exception ex)
         {
+            _suppressNextExternalChange = false;
             System.Diagnostics.Debug.WriteLine(
                 $"[DocumentViewModel] Could not write '{FilePath}': {ex.Message}");
             return false;
         }
     }
 
+    // ── External-change watcher ───────────────────────────────────────────────
+
+    /// <summary>
+    /// Starts observing <see cref="FilePath"/> for changes made by external processes.
+    /// When the file changes and the document has no unsaved edits, the content is reloaded
+    /// automatically.  When the file is deleted, the modified flag is set so the user is
+    /// aware the backing store is gone.
+    /// Call this once after the document is opened.
+    /// </summary>
+    internal void StartWatchingFile(Services.FileSystemWatcherService watcher)
+    {
+        if (FilePath is null) return;
+
+        // Watch for content changes — auto-reload only if the document is clean.
+        var changedSub = watcher.Changed
+            .Where(e => string.Equals(e.FullPath, FilePath, StringComparison.OrdinalIgnoreCase))
+            .Subscribe(async _ =>
+            {
+                if (_suppressNextExternalChange)
+                {
+                    _suppressNextExternalChange = false;
+                    return;
+                }
+
+                if (IsModified) return; // user has unsaved edits — leave them alone
+
+                try
+                {
+                    var newText = await File.ReadAllTextAsync(FilePath);
+                    await Dispatcher.UIThread.InvokeAsync(() =>
+                    {
+                        DocumentText = newText;
+                        MarkSaved();
+                    });
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine(
+                        $"[DocumentViewModel] Could not reload '{FilePath}': {ex.Message}");
+                }
+            });
+
+        // Watch for deletion — mark modified so the user knows the file is gone.
+        var deletedSub = watcher.Deleted
+            .Where(e => string.Equals(e.FullPath, FilePath, StringComparison.OrdinalIgnoreCase))
+            .Subscribe(_ =>
+            {
+                Dispatcher.UIThread.InvokeAsync(MarkModified);
+            });
+
+        // Combine both subscriptions so they are disposed together.
+        _fileWatchSubscription = new CompositeDisposable(changedSub, deletedSub);
+    }
+
     // ── IDockCommandBarProvider ───────────────────────────────────────────────
 
     public ValueTask DisposeAsync()
     {
+        _fileWatchSubscription?.Dispose();
+        _fileWatchSubscription = null;
+
         Disposing?.Invoke(this, EventArgs.Empty);
 
         // Clear all event subscribers so nothing holds references to this ViewModel.

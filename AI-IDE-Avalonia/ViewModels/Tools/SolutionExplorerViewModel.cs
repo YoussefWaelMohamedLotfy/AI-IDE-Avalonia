@@ -4,6 +4,7 @@ using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.IO;
 using System.Linq;
+using System.Reactive.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -16,7 +17,7 @@ using Dock.Model.Mvvm.Controls;
 
 namespace AI_IDE_Avalonia.ViewModels.Tools;
 
-public partial class SolutionExplorerViewModel : Tool
+public partial class SolutionExplorerViewModel : Tool, IDisposable
 {
     // Root nodes (one per open workspace root).
     private readonly ObservableCollection<TreeNode> _allNodes = TreeNode.CreateSampleProject();
@@ -52,6 +53,13 @@ public partial class SolutionExplorerViewModel : Tool
 
     // Cancels any in-progress async filter when the user types a new query.
     private CancellationTokenSource? _filterCts;
+
+    // ── File-system watching ───────────────────────────────────────────────────
+
+    private FileSystemWatcherService? _fsWatcher;
+    private IDisposable? _fsCreatedSub;
+    private IDisposable? _fsDeletedSub;
+    private IDisposable? _fsRenamedSub;
 
     // Debounce delay: wait this long after the last keystroke before searching.
     private static readonly TimeSpan FilterDebounce = TimeSpan.FromMilliseconds(300);
@@ -270,7 +278,12 @@ public partial class SolutionExplorerViewModel : Tool
         ApplyFilter();
 
         progress?.Report("Workspace loaded successfully.");
+
+        // ── Start watching for external filesystem changes ────────────────────
+        StartWatchingWorkspace(folderPath);
     }
+
+    // ── Synchronous wrapper ────────────────────────────────────────────────────
 
     /// <summary>
     /// Synchronous wrapper — delegates to <see cref="LoadWorkspaceAsync"/> and waits.
@@ -278,6 +291,163 @@ public partial class SolutionExplorerViewModel : Tool
     /// </summary>
     public void LoadWorkspace(string folderPath) =>
         LoadWorkspaceAsync(folderPath).GetAwaiter().GetResult();
+
+    // ── File-system watcher lifecycle ──────────────────────────────────────────
+
+    /// <summary>
+    /// Starts (or restarts) the <see cref="FileSystemWatcherService"/> for
+    /// <paramref name="rootPath"/> and subscribes to created/deleted/renamed events so that
+    /// the in-memory tree stays in sync with the filesystem.
+    /// Also notifies <see cref="DocumentService"/> so open documents can watch their files.
+    /// </summary>
+    private void StartWatchingWorkspace(string rootPath)
+    {
+        // Tear down any previous watcher.
+        _fsCreatedSub?.Dispose();
+        _fsDeletedSub?.Dispose();
+        _fsRenamedSub?.Dispose();
+        _fsWatcher?.Dispose();
+        _fsWatcher = null;
+
+        try
+        {
+            _fsWatcher = new FileSystemWatcherService(rootPath);
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine(
+                $"[SolutionExplorer] Could not start watcher for '{rootPath}': {ex.Message}");
+        }
+
+        // Also tell DocumentService so newly-opened documents can track their files.
+        DocumentService.Instance.SetWorkspaceWatcher(rootPath);
+
+        if (_fsWatcher is null) return;
+
+        _fsCreatedSub = _fsWatcher.Created
+            .Subscribe(e => Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(() => OnFsCreated(e)));
+
+        _fsDeletedSub = _fsWatcher.Deleted
+            .Subscribe(e => Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(() => OnFsDeleted(e)));
+
+        _fsRenamedSub = _fsWatcher.Renamed
+            .Subscribe(e => Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(() => OnFsRenamed(e)));
+    }
+
+    // ── Filesystem event handlers ──────────────────────────────────────────────
+
+    private void OnFsCreated(System.IO.FileSystemEventArgs e)
+    {
+        var parentDir = Path.GetDirectoryName(e.FullPath);
+        if (parentDir is null) return;
+
+        var parentNode = FindNodeByPath(_allNodes, parentDir);
+        if (parentNode is null || !parentNode.ChildrenLoaded) return;
+
+        // Avoid duplicates (watcher can fire more than once for the same path).
+        if (parentNode.Children!.Any(n => string.Equals(n.FullPath, e.FullPath, StringComparison.OrdinalIgnoreCase)))
+            return;
+
+        bool isDir = Directory.Exists(e.FullPath);
+        TreeNode newNode;
+
+        if (isDir)
+        {
+            newNode = new TreeNode(
+                e.Name ?? Path.GetFileName(e.FullPath),
+                isFolder: true,
+                children: new ObservableCollection<TreeNode> { TreeNode.LoadingPlaceholder },
+                fullPath: e.FullPath,
+                childrenLoaded: false);
+            ObserveNode(newNode);
+        }
+        else
+        {
+            newNode = new TreeNode(
+                e.Name ?? Path.GetFileName(e.FullPath),
+                isFolder: false,
+                fullPath: e.FullPath);
+        }
+
+        // Insert in sorted order (folders first, then files — matching the existing convention).
+        InsertNodeSorted(parentNode.Children!, newNode);
+        ApplyFilter();
+    }
+
+    private void OnFsDeleted(System.IO.FileSystemEventArgs e)
+    {
+        var node = FindNodeByPath(_allNodes, e.FullPath);
+        if (node is null) return;
+
+        RemoveNodeFromTree(node, _allNodes);
+        ApplyFilter();
+    }
+
+    private void OnFsRenamed(System.IO.RenamedEventArgs e)
+    {
+        // Treat rename as delete-old + create-new so the sorted position is correct.
+        OnFsDeleted(new System.IO.FileSystemEventArgs(
+            System.IO.WatcherChangeTypes.Deleted, Path.GetDirectoryName(e.OldFullPath) ?? "", e.OldName));
+        OnFsCreated(new System.IO.FileSystemEventArgs(
+            System.IO.WatcherChangeTypes.Created, Path.GetDirectoryName(e.FullPath) ?? "", e.Name));
+    }
+
+    // ── Tree helpers ───────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Finds the node whose <see cref="TreeNode.FullPath"/> matches <paramref name="fullPath"/>
+    /// (case-insensitive), searching the entire loaded tree.
+    /// </summary>
+    private static TreeNode? FindNodeByPath(IEnumerable<TreeNode> nodes, string fullPath)
+    {
+        foreach (var node in nodes)
+        {
+            if (node.IsLoadingPlaceholder) continue;
+            if (string.Equals(node.FullPath, fullPath, StringComparison.OrdinalIgnoreCase))
+                return node;
+            if (node.Children is { Count: > 0 })
+            {
+                var found = FindNodeByPath(node.Children, fullPath);
+                if (found is not null) return found;
+            }
+        }
+        return null;
+    }
+
+    /// <summary>
+    /// Inserts <paramref name="node"/> into <paramref name="collection"/> in alphabetical order,
+    /// placing folder nodes before file nodes (matching the existing tree convention).
+    /// </summary>
+    private static void InsertNodeSorted(ObservableCollection<TreeNode> collection, TreeNode node)
+    {
+        // Find the insertion index: folders before files, then alphabetical within each group.
+        int i = 0;
+        for (; i < collection.Count; i++)
+        {
+            var existing = collection[i];
+            if (existing.IsLoadingPlaceholder) continue;
+
+            // node is a folder: comes before files; skip over other folders in alpha order.
+            if (node.IsFolder && !existing.IsFolder) break;
+            // node is a file: comes after folders.
+            if (!node.IsFolder && existing.IsFolder) { i++; continue; }
+
+            if (string.Compare(node.Name, existing.Name, StringComparison.OrdinalIgnoreCase) <= 0)
+                break;
+        }
+        collection.Insert(i, node);
+    }
+
+    // ── IDisposable ────────────────────────────────────────────────────────────
+
+    public void Dispose()
+    {
+        _fsCreatedSub?.Dispose();
+        _fsDeletedSub?.Dispose();
+        _fsRenamedSub?.Dispose();
+        _fsWatcher?.Dispose();
+        _filterCts?.Dispose();
+    }
 
     // ── Shallow tree builder ───────────────────────────────────────────────────
 
