@@ -48,39 +48,35 @@ public partial class DocumentViewModel : Document, IDockCommandBarProvider, IAsy
         PropertyChanged += (_, e) =>
         {
             if (e.PropertyName == nameof(Title))
-            {
-                // Keep _baseTitle in sync whenever the title is set while the document is clean.
-                if (!IsModified)
-                    _baseTitle = Title ?? string.Empty;
-            }
+                _baseTitle = Title ?? string.Empty;
         };
     }
 
     // ── Dirty-state helpers ───────────────────────────────────────────────────
 
     /// <summary>
-    /// Marks the document as having unsaved changes and appends '*' to the tab title.
+    /// Marks the document as having unsaved changes.
+    /// The Dock framework's <c>DocumentControl</c> renders its own modified indicator
+    /// when <see cref="Dock.Model.Core.IDockable.IsModified"/> is <see langword="true"/>,
+    /// so we do not touch the tab <see cref="Dock.Model.Core.IDockable.Title"/>.
     /// Safe to call multiple times; no-ops when already modified.
     /// </summary>
     public void MarkModified()
     {
         if (IsModified) return;
 
-        _baseTitle = Title ?? string.Empty;
         IsModified = true;
-        Title = _baseTitle + "*";
         RaiseCommandBarsChanged();
     }
 
     /// <summary>
-    /// Clears the modified flag and removes the '*' from the tab title.
+    /// Clears the modified flag after a successful save.
     /// </summary>
     public void MarkSaved()
     {
         if (!IsModified) return;
 
         IsModified = false;
-        Title = _baseTitle;
         RaiseCommandBarsChanged();
     }
 
