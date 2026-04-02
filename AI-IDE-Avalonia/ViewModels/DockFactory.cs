@@ -34,7 +34,6 @@ public class DockFactory : Factory
 
     public override IRootDock CreateLayout()
     {
-        var document1 = new DocumentViewModel {Id = "Document1", Title = "Document1"};
         var solutionExplorer = new SolutionExplorerViewModel {Id = "SolutionExplorer", Title = "Solution Explorer", KeepPinnedDockableVisible = true};
 
         // Expose the tree to the AI agent and to the workspace-selector flow.
@@ -95,8 +94,8 @@ public class DockFactory : Factory
         {
             // DockGroup = "CustomDocumentDock",
             IsCollapsable = false,
-            ActiveDockable = document1,
-            VisibleDockables = CreateList<IDockable>(document1),
+            ActiveDockable = null,
+            VisibleDockables = null,
             CanCreateDocument = true,
             // CanDrop = false,
             EnableWindowDrag = true,
