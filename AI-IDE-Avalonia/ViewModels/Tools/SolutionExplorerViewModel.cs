@@ -885,9 +885,49 @@ public partial class SolutionExplorerViewModel : Tool, IDisposable
         if (node.Name.Contains(query, StringComparison.OrdinalIgnoreCase))
             results.Add(currentPath);
 
-        if (node.Children is null) return;
-        foreach (var child in node.Children)
-            CollectMatchingPaths(child, query, $"{currentPath}/{child.Name}", results);
+        if (!node.IsFolder) return;
+
+        // Loaded folder: recurse through in-memory children.
+        if (node.ChildrenLoaded && node.Children is { Count: > 0 })
+        {
+            foreach (var child in node.Children)
+                CollectMatchingPaths(child, query, $"{currentPath}/{child.Name}", results);
+            return;
+        }
+
+        // Unloaded folder: search the filesystem directly so the AI sees the full tree
+        // even for folders the user has never expanded in the UI.
+        if (node.FullPath is not null)
+            CollectMatchingPathsFromFilesystem(node.FullPath, query, currentPath, results);
+    }
+
+    private static void CollectMatchingPathsFromFilesystem(string dirPath, string query, string currentPath, List<string> results)
+    {
+        try
+        {
+            var dir = new DirectoryInfo(dirPath);
+            if (!dir.Exists) return;
+
+            foreach (var subDir in dir.GetDirectories()
+                                       .Where(d => (d.Attributes & FileAttributes.Hidden) == 0)
+                                       .OrderBy(d => d.Name, StringComparer.OrdinalIgnoreCase))
+            {
+                var childPath = $"{currentPath}/{subDir.Name}";
+                if (subDir.Name.Contains(query, StringComparison.OrdinalIgnoreCase))
+                    results.Add(childPath);
+                CollectMatchingPathsFromFilesystem(subDir.FullName, query, childPath, results);
+            }
+
+            foreach (var file in dir.GetFiles()
+                                     .Where(f => (f.Attributes & FileAttributes.Hidden) == 0)
+                                     .OrderBy(f => f.Name, StringComparer.OrdinalIgnoreCase))
+            {
+                if (file.Name.Contains(query, StringComparison.OrdinalIgnoreCase))
+                    results.Add($"{currentPath}/{file.Name}");
+            }
+        }
+        catch (UnauthorizedAccessException) { }
+        catch (IOException) { }
     }
 
     private static TreeNode? FindNode(IEnumerable<TreeNode> nodes, string[] pathParts)
