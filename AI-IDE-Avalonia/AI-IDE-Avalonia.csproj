@@ -14,9 +14,9 @@
     <!-- Bundle everything into a single .exe -->
     <PublishSingleFile>true</PublishSingleFile>
     <!-- Extract native libraries on first run rather than blocking single-file bundling -->
-    <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
+    <!-- <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract> -->
     <!-- Compress bundled assemblies to reduce output size -->
-    <EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>
+    <!-- <EnableCompressionInSingleFile>true</EnableCompressionInSingleFile> -->
     <!-- Pre-compile to native code for faster cold-start -->
     <PublishReadyToRun>true</PublishReadyToRun>
   </PropertyGroup>
