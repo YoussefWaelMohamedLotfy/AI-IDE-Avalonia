@@ -10,7 +10,7 @@ namespace AI_IDE_Avalonia.ViewModels;
 
 public partial class WorkspaceSelectorViewModel : ViewModelBase, IDisposable
 {
-    private readonly RecentFoldersService _service = new();
+    private readonly RecentFoldersService _service;
     private readonly TaskCompletionSource<string?> _tcs =
         new(TaskCreationOptions.RunContinuationsAsynchronously);
 
@@ -26,8 +26,9 @@ public partial class WorkspaceSelectorViewModel : ViewModelBase, IDisposable
 
     public bool HasRecentFolders => RecentFolders.Count > 0;
 
-    public WorkspaceSelectorViewModel()
+    public WorkspaceSelectorViewModel(RecentFoldersService recentFoldersService)
     {
+        _service = recentFoldersService;
         var entries = _service.Load();
         _recentFolders = new ObservableCollection<RecentFolderEntry>(entries);
     }

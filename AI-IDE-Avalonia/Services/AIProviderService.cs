@@ -6,11 +6,9 @@ public sealed class AIProviderService
 {
     public static readonly string[] AvailableProviders = ["Ollama", "Github Copilot"];
 
-    public static readonly AIProviderService Instance = new();
-
     private string _selectedProvider = AvailableProviders[0];
 
-    private AIProviderService() { }
+    public AIProviderService() { }
 
     public string SelectedProvider
     {

@@ -19,15 +19,17 @@ namespace AI_IDE_Avalonia.ViewModels;
 public class DockFactory : Factory
 {
     private readonly object _context;
+    private readonly DocumentService _documentService;
     private IRootDock? _rootDock;
     private IDocumentDock? _documentDock;
 
     /// <summary>The Solution Explorer tool created by <see cref="CreateLayout"/>; available after layout initialisation.</summary>
     public SolutionExplorerViewModel? SolutionExplorer { get; private set; }
 
-    public DockFactory(object context)
+    public DockFactory(object context, DocumentService documentService)
     {
         _context = context;
+        _documentService = documentService;
     }
 
     public override IDocumentDock CreateDocumentDock() => new CustomDocumentDock();
@@ -147,7 +149,7 @@ public class DockFactory : Factory
         _documentDock = documentDock;
         _rootDock = rootDock;
 
-        DocumentService.Instance.DocumentDock = documentDock;
+        _documentService.DocumentDock = documentDock;
             
         return rootDock;
     }

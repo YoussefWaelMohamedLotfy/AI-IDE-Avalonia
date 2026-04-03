@@ -5,6 +5,7 @@ using System.Diagnostics;
 using System.Threading.Tasks;
 using System.Windows.Input;
 using AI_IDE_Avalonia.Models;
+using AI_IDE_Avalonia.Services;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Dock.Model.Controls;
@@ -68,9 +69,9 @@ public partial class MainWindowViewModel : ObservableObject
     public AI_IDE_Avalonia.ViewModels.Tools.SolutionExplorerViewModel? SolutionExplorer =>
         (_factory as DockFactory)?.SolutionExplorer;
 
-    public MainWindowViewModel()
+    public MainWindowViewModel(DocumentService documentService)
     {
-        _factory = new DockFactory(new DemoData());
+        _factory = new DockFactory(new DemoData(), documentService);
 
         DebugFactoryEvents(_factory);
 

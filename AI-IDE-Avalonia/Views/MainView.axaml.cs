@@ -15,6 +15,7 @@ using Dock.Serializer.SystemTextJson;
 using AI_IDE_Avalonia.Services;
 using AI_IDE_Avalonia.ViewModels;
 using AI_IDE_Avalonia.ViewModels.Documents;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace AI_IDE_Avalonia.Views;
 
@@ -22,6 +23,11 @@ public partial class MainView : UserControl
 {
     private IDockSerializer? _serializer;
     private IDockState? _dockState;
+
+    // Cached singleton resolved once App.Services is ready.
+    private DocumentService? _documentService;
+    private DocumentService DocumentSvc =>
+        _documentService ??= App.Services.GetRequiredService<DocumentService>();
     
     public MainView()
     {
@@ -160,7 +166,7 @@ public partial class MainView : UserControl
 
     private async Task SaveActiveDocument()
     {
-        var doc = DocumentService.Instance.ActiveDocument;
+        var doc = DocumentSvc.ActiveDocument;
         if (doc is null) return;
 
         if (await doc.SaveAsync())
@@ -179,7 +185,7 @@ public partial class MainView : UserControl
 
     private async Task SaveAllDocuments()
     {
-        foreach (DocumentViewModel doc in DocumentService.Instance.AllDocuments)
+        foreach (DocumentViewModel doc in DocumentSvc.AllDocuments)
         {
             if (doc.FilePath is not null)
                 await doc.SaveAsync();

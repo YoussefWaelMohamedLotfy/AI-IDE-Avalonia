@@ -14,6 +14,7 @@ using AI_IDE_Avalonia.Services;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Dock.Model.Mvvm.Controls;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace AI_IDE_Avalonia.ViewModels.Tools;
 
@@ -21,6 +22,11 @@ public partial class SolutionExplorerViewModel : Tool, IDisposable
 {
     // Root nodes (one per open workspace root).
     private readonly ObservableCollection<TreeNode> _allNodes = TreeNode.CreateSampleProject();
+
+    // Cached singleton resolved lazily to avoid accessing App.Services before it is ready.
+    private DocumentService? _documentService;
+    private DocumentService DocumentSvc =>
+        _documentService ??= App.Services.GetRequiredService<DocumentService>();
 
     [ObservableProperty]
     private string _filterText = string.Empty;
@@ -320,7 +326,7 @@ public partial class SolutionExplorerViewModel : Tool, IDisposable
         }
 
         // Also tell DocumentService so newly-opened documents can track their files.
-        DocumentService.Instance.SetWorkspaceWatcher(rootPath);
+        DocumentSvc.SetWorkspaceWatcher(rootPath);
 
         if (_fsWatcher is null) return;
 
@@ -955,7 +961,7 @@ public partial class SolutionExplorerViewModel : Tool, IDisposable
         if (node is null || node.IsLoadingPlaceholder) return;
         if (node.IsFolder) { node.IsExpanded = !node.IsExpanded; return; }
 
-        DocumentService.Instance.OpenDocument(node.Name, node.FullPath);
+        DocumentSvc.OpenDocument(node.Name, node.FullPath);
     }
 
     [RelayCommand]

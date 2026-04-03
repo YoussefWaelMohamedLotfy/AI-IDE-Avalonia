@@ -13,9 +13,7 @@ namespace AI_IDE_Avalonia.Services;
 /// </summary>
 public sealed class DocumentService
 {
-    public static readonly DocumentService Instance = new();
-
-    private DocumentService() { }
+    public DocumentService() { }
 
     internal IDocumentDock? DocumentDock { get; set; }
 

@@ -4,7 +4,6 @@ using System;
 using Avalonia;
 using Dock.Serializer.SystemTextJson;
 using Dock.Settings;
-using AI_IDE_Avalonia.Services;
 
 [assembly: DockJsonSourceGeneration]
 [assembly: DockJsonSerializable(typeof(AI_IDE_Avalonia.ViewModels.Docks.CustomDocumentDock))]
@@ -22,17 +21,7 @@ internal class Program
     [STAThread]
     private static void Main(string[] args)
     {
-        AppConfiguration.Initialize();
-        LoggingService.Initialize();
-
-        try
-        {
-            BuildAvaloniaApp().StartWithClassicDesktopLifetime(args);
-        }
-        finally
-        {
-            LoggingService.CloseAndFlush();
-        }
+        BuildAvaloniaApp().StartWithClassicDesktopLifetime(args);
     }
 
     public static AppBuilder BuildAvaloniaApp()
