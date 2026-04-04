@@ -15,7 +15,7 @@ namespace AI_IDE_Avalonia.Services;
 public sealed class LocalizationService : ObservableObject
 {
     private static readonly ResourceManager _rm =
-        new("AI_IDE_Avalonia.Resources.Strings", typeof(LocalizationService).Assembly);
+        new("AI-IDE-Avalonia.Resources.Strings", typeof(LocalizationService).Assembly);
 
     private CultureInfo _currentCulture = new("en");
 
