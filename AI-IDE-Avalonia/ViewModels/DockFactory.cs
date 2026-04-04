@@ -43,7 +43,7 @@ public class DockFactory : Factory
         SolutionExplorer = solutionExplorer;
         var tool2 = new Tool2ViewModel {Id = "Tool2", Title = "Tool2", KeepPinnedDockableVisible = true};
         var tool3 = new Tool3ViewModel {Id = "Tool3", Title = "Tool3", CanDrag = false };
-        var tool5 = new Tool5ViewModel {Id = "Tool5", Title = "Tool5" };
+        var tool5 = new Tool5ViewModel {Id = "Tool5", Title = "AI Chat" };
 
         var leftDock = new ProportionalDock
         {

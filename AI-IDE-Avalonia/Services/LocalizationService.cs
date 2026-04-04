@@ -92,5 +92,7 @@ public sealed class LocalizationService : ObservableObject
     public string ChatStop          => this[nameof(ChatStop)];
     public string ChatClear         => this[nameof(ChatClear)];
     public string ChatProviderLabel => this[nameof(ChatProviderLabel)];
+    public string ChatModelLabel    => this[nameof(ChatModelLabel)];
     public string ChatToolCall      => this[nameof(ChatToolCall)];
+    public string AiChatTitle       => this[nameof(AiChatTitle)];
 }

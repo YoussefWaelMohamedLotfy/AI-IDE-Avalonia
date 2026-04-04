@@ -61,6 +61,15 @@ namespace AI_IDE_Avalonia.Resources {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to AI Chat.
+        /// </summary>
+        public static string AiChatTitle {
+            get {
+                return ResourceManager.GetString("AiChatTitle", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Create a new file..
         /// </summary>
         public static string BsNew {
@@ -102,6 +111,15 @@ namespace AI_IDE_Avalonia.Resources {
         public static string ChatClear {
             get {
                 return ResourceManager.GetString("ChatClear", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Model:.
+        /// </summary>
+        public static string ChatModelLabel {
+            get {
+                return ResourceManager.GetString("ChatModelLabel", resourceCulture);
             }
         }
         

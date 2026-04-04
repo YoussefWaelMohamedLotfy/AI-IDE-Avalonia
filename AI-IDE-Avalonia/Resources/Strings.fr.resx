@@ -417,7 +417,13 @@
   <data name="ChatProviderLabel" xml:space="preserve">
     <value>Fournisseur :</value>
   </data>
+  <data name="ChatModelLabel" xml:space="preserve">
+    <value>Modèle :</value>
+  </data>
   <data name="ChatToolCall" xml:space="preserve">
     <value>appel d'outil</value>
+  </data>
+  <data name="AiChatTitle" xml:space="preserve">
+    <value>Chat IA</value>
   </data>
 </root>

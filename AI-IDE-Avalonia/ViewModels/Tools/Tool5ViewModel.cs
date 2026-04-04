@@ -27,25 +27,30 @@ namespace AI_IDE_Avalonia.ViewModels.Tools;
 public partial class Tool5ViewModel : Tool, IAsyncDisposable
 {
     private const string OllamaEndpoint = "http://localhost:11434";
-    private const string ModelName = "granite4:latest";
+    private const string DefaultOllamaModel = "gemma4:e2b";
+    private const string DefaultCopilotModel = "gpt-5-mini";
     private const int MaxToolIterations = 10;
 
-    private const string SystemInstructions =
-        "You are an AI assistant embedded in an IDE. " +
-        "You have access to tools that manage the project file tree shown in the explorer panel. " +
-        "Use search_tree_nodes to find nodes by name, add_tree_node to create new files or folders, " +
-        "and delete_tree_node to remove nodes. " +
-        "Use write_to_document to write generated code or text directly into the editor — " +
-        "always prefer this tool when the user asks you to write, generate, or create code. " +
-        "Paths use '/' as separator (e.g. 'MyAIProject/src/Agents').";
+    private const string SystemInstructions = """
+        You are an AI assistant embedded in an IDE.
+        You have access to tools that manage the project file tree shown in the explorer panel.
+        Use search_tree_nodes to find nodes by name, add_tree_node to create new files or folders, and delete_tree_node to remove nodes.
+        Use write_to_document to write generated code or text directly into the editor — always prefer this tool when the user asks you to write, generate, or create code.
+        Paths use '/' as separator (e.g. 'MyAIProject/src/Agents'). 
+        """;
 
     /// <summary>Shared Solution Explorer instance wired by DockFactory; used to create AI tree tools.</summary>
     internal static SolutionExplorerViewModel? SharedSolutionExplorer { get; set; }
 
+    // ── Model caches (populated once at startup) ─────────────────────────────────
+
+    private readonly List<string> _cachedOllamaModels = [];
+    private readonly List<string> _cachedCopilotModels = [];
+
     // ── Ollama backend ──────────────────────────────────────────────────────────
 
-    private readonly IAiChatClient _ollamaClient;
-    private readonly List<AiChatMessage> _chatHistory = new();
+    private IAiChatClient _ollamaClient;
+    private readonly List<AiChatMessage> _chatHistory = [];
 
     // ── GitHub Copilot backend ──────────────────────────────────────────────────
 
@@ -55,7 +60,7 @@ public partial class Tool5ViewModel : Tool, IAsyncDisposable
 
     // ── Input history ────────────────────────────────────────────────────────────
 
-    private readonly List<string> _inputHistory = new();
+    private readonly List<string> _inputHistory = [];
     private int _historyIndex = -1;
     private string _pendingInput = string.Empty;
     private bool _navigating;
@@ -75,18 +80,29 @@ public partial class Tool5ViewModel : Tool, IAsyncDisposable
     private bool _isSending;
 
     [ObservableProperty]
-    private string _currentModelLabel = ModelName;
+    private string _currentModelLabel = DefaultOllamaModel;
 
     [ObservableProperty]
-    private string _inputWatermark = $"Ask {ModelName} via Ollama anything";
+    private string _inputWatermark = $"Ask {DefaultOllamaModel} via Ollama anything";
 
-    public ObservableCollection<ChatMessage> Messages { get; } = new();
+    public ObservableCollection<ChatMessage> Messages { get; } = [];
+
+    public ObservableCollection<string> AvailableModels { get; } = [];
+
+    [ObservableProperty]
+    private string _selectedModel = DefaultOllamaModel;
+
+    [ObservableProperty]
+    private bool _isLoadingModels;
 
     public Tool5ViewModel()
     {
-        _ollamaClient = new OllamaApiClient(new Uri(OllamaEndpoint), ModelName);
+        _ollamaClient = new OllamaApiClient(new Uri(OllamaEndpoint), DefaultOllamaModel);
         _chatHistory.Add(new AiChatMessage(AiChatRole.System, SystemInstructions));
         ProviderService.ProviderChanged += OnProviderChanged;
+        Title = Loc.AiChatTitle;
+        Loc.PropertyChanged += (_, _) => Title = Loc.AiChatTitle;
+        _ = PreloadAllModelsAsync();
     }
 
     // Singleton services resolved once and cached. Lazy to avoid accessing App.Services
@@ -117,6 +133,7 @@ public partial class Tool5ViewModel : Tool, IAsyncDisposable
         _chatHistory.Clear();
         _chatHistory.Add(new AiChatMessage(AiChatRole.System, SystemInstructions));
         Messages.Clear();
+        PopulateAvailableModels(ProviderService.SelectedProvider);
         UpdateProviderLabels();
     }
 
@@ -131,6 +148,92 @@ public partial class Tool5ViewModel : Tool, IAsyncDisposable
             ProviderService.SelectedProvider = value;
     }
 
+    partial void OnSelectedModelChanged(string value)
+    {
+        if (string.IsNullOrEmpty(value)) return;
+
+        if (ProviderService.SelectedProvider == "Ollama")
+        {
+            DisposeOllamaClient();
+            _ollamaClient = new OllamaApiClient(new Uri(OllamaEndpoint), value);
+        }
+        else
+        {
+            _ = DisposeGitHubCopilotAsync();
+        }
+
+        UpdateProviderLabels();
+    }
+
+    private async Task PreloadAllModelsAsync(CancellationToken ct = default)
+    {
+        IsLoadingModels = true;
+        try
+        {
+            var ollamaTask = FetchOllamaModelsAsync(ct);
+            var copilotTask = FetchCopilotModelsAsync(ct);
+            await Task.WhenAll(ollamaTask, copilotTask);
+
+            // Populate the UI list for whichever provider is currently active.
+            PopulateAvailableModels(ProviderService.SelectedProvider);
+        }
+        finally
+        {
+            IsLoadingModels = false;
+        }
+    }
+
+    private async Task FetchOllamaModelsAsync(CancellationToken ct)
+    {
+        try
+        {
+            using var client = new OllamaApiClient(new Uri(OllamaEndpoint));
+            var models = await client.ListLocalModelsAsync(ct);
+            _cachedOllamaModels.Clear();
+            foreach (var m in models)
+                _cachedOllamaModels.Add(m.Name);
+        }
+        catch
+        {
+            // Ollama not running — leave cache empty; fallback applied in PopulateAvailableModels.
+        }
+    }
+
+    private async Task FetchCopilotModelsAsync(CancellationToken ct)
+    {
+        try
+        {
+            using var client = new CopilotClient(new CopilotClientOptions { CliPath = CopilotCliPath });
+            await client.StartAsync(ct);
+            var models = await client.ListModelsAsync(ct);
+            _cachedCopilotModels.Clear();
+            foreach (var m in models)
+                _cachedCopilotModels.Add(m.Id);
+            await client.StopAsync();
+        }
+        catch
+        {
+            // Copilot CLI not running — leave cache empty; fallback applied in PopulateAvailableModels.
+        }
+    }
+
+    private void PopulateAvailableModels(string provider)
+    {
+        AvailableModels.Clear();
+
+        var source = provider == "Github Copilot" ? _cachedCopilotModels : _cachedOllamaModels;
+        var fallback = provider == "Github Copilot" ? DefaultCopilotModel : DefaultOllamaModel;
+
+        foreach (var m in source)
+            AvailableModels.Add(m);
+
+        if (AvailableModels.Count == 0)
+            AvailableModels.Add(fallback);
+
+        if (!AvailableModels.Contains(SelectedModel))
+            SelectedModel = AvailableModels[0];
+    }
+
     private void UpdateProviderLabels()
     {
         var provider = ProviderService.SelectedProvider;
@@ -141,13 +244,13 @@ public partial class Tool5ViewModel : Tool, IAsyncDisposable
 
         if (provider == "Github Copilot")
         {
-            CurrentModelLabel = "GitHub Copilot";
-            InputWatermark = "Ask GitHub Copilot anything";
+            CurrentModelLabel = SelectedModel;
+            InputWatermark = $"Ask GitHub Copilot ({SelectedModel}) anything";
         }
         else
         {
-            CurrentModelLabel = ModelName;
-            InputWatermark = $"Ask {ModelName} via Ollama anything";
+            CurrentModelLabel = SelectedModel;
+            InputWatermark = $"Ask {SelectedModel} via Ollama anything";
         }
     }
 
@@ -166,7 +269,8 @@ public partial class Tool5ViewModel : Tool, IAsyncDisposable
 
         var sessionConfig = new SessionConfig
         {
-            Model = "gpt-5-mini",
+            Model = SelectedModel,
+            ReasoningEffort = "low",
             OnPermissionRequest = PermissionHandler.ApproveAll,
             SystemMessage = new SystemMessageConfig
             {
@@ -216,6 +320,12 @@ public partial class Tool5ViewModel : Tool, IAsyncDisposable
             _copilotClient = null;
         }
         _copilotSession = null;
+    }
+
+    private void DisposeOllamaClient()
+    {
+        if (_ollamaClient is IDisposable disposable)
+            disposable.Dispose();
     }
 
     // ── Send command ───────────────────────────────────────────────────────────
@@ -595,9 +705,6 @@ public partial class Tool5ViewModel : Tool, IAsyncDisposable
         GC.SuppressFinalize(this);
         ProviderService.ProviderChanged -= OnProviderChanged;
         await DisposeGitHubCopilotAsync();
-        if (_ollamaClient is IAsyncDisposable asyncDisposable)
-            await asyncDisposable.DisposeAsync();
-        else if (_ollamaClient is IDisposable disposable)
-            disposable.Dispose();
+        DisposeOllamaClient();
     }
 }

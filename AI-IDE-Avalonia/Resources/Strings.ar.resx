@@ -417,7 +417,13 @@
   <data name="ChatProviderLabel" xml:space="preserve">
     <value>المزود:</value>
   </data>
+  <data name="ChatModelLabel" xml:space="preserve">
+    <value>النموذج:</value>
+  </data>
   <data name="ChatToolCall" xml:space="preserve">
     <value>استدعاء أداة</value>
+  </data>
+  <data name="AiChatTitle" xml:space="preserve">
+    <value>دردشة الذكاء الاصطناعي</value>
   </data>
 </root>
