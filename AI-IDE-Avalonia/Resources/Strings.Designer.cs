@@ -1204,6 +1204,15 @@ namespace AI_IDE_Avalonia.Resources {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Solution Explorer.
+        /// </summary>
+        public static string ToolSolutionExplorer {
+            get {
+                return ResourceManager.GetString("ToolSolutionExplorer", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Select a recent folder or open a new one on your machine.
         /// </summary>
         public static string WorkspaceSelectorSubtitle {

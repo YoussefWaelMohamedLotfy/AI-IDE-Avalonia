@@ -15,409 +15,409 @@
 
   <!-- ── WorkspaceSelectorWindow ─────────────────────────────────────────── -->
   <data name="WorkspaceSelectorTitle" xml:space="preserve">
-    <value>Open Workspace</value>
+    <value>Otwórz przestrzeń roboczą</value>
   </data>
   <data name="WorkspaceSelectorSubtitle" xml:space="preserve">
-    <value>Select a recent folder or open a new one on your machine</value>
+    <value>Wybierz ostatni folder lub otwórz nowy na swoim komputerze</value>
   </data>
   <data name="OpenFolder" xml:space="preserve">
-    <value>Open Folder…</value>
+    <value>Otwórz folder…</value>
   </data>
   <data name="Recent" xml:space="preserve">
-    <value>RECENT</value>
+    <value>OSTATNIE</value>
   </data>
   <data name="NoRecentWorkspaces" xml:space="preserve">
-    <value>No recent workspaces</value>
+    <value>Brak ostatnich przestrzeni roboczych</value>
   </data>
   <data name="ContinueWithoutWorkspace" xml:space="preserve">
-    <value>Continue Without Workspace</value>
+    <value>Kontynuuj bez przestrzeni roboczej</value>
   </data>
 
   <!-- ── Ribbon tab headers ──────────────────────────────────────────────── -->
   <data name="TabHome" xml:space="preserve">
-    <value>Home</value>
+    <value>Strona główna</value>
   </data>
   <data name="TabEdit" xml:space="preserve">
-    <value>Edit</value>
+    <value>Edycja</value>
   </data>
   <data name="TabView" xml:space="preserve">
-    <value>View</value>
+    <value>Widok</value>
   </data>
   <data name="TabRun" xml:space="preserve">
-    <value>Run</value>
+    <value>Uruchom</value>
   </data>
   <data name="TabHelp" xml:space="preserve">
-    <value>Help</value>
+    <value>Pomoc</value>
   </data>
 
   <!-- ── Ribbon group headers ────────────────────────────────────────────── -->
   <data name="GroupNavigate" xml:space="preserve">
-    <value>Navigate</value>
+    <value>Nawigacja</value>
   </data>
   <data name="GroupFile" xml:space="preserve">
-    <value>File</value>
+    <value>Plik</value>
   </data>
   <data name="GroupClipboard" xml:space="preserve">
-    <value>Clipboard</value>
+    <value>Schowek</value>
   </data>
   <data name="GroupHistory" xml:space="preserve">
-    <value>History</value>
+    <value>Historia</value>
   </data>
   <data name="GroupFind" xml:space="preserve">
-    <value>Find</value>
+    <value>Znajdź</value>
   </data>
   <data name="GroupCode" xml:space="preserve">
-    <value>Code</value>
+    <value>Kod</value>
   </data>
   <data name="GroupPanels" xml:space="preserve">
-    <value>Panels</value>
+    <value>Panele</value>
   </data>
   <data name="GroupLayout" xml:space="preserve">
-    <value>Layout</value>
+    <value>Układ</value>
   </data>
   <data name="GroupWindows" xml:space="preserve">
-    <value>Windows</value>
+    <value>Okna</value>
   </data>
   <data name="GroupThemes" xml:space="preserve">
-    <value>Themes</value>
+    <value>Motywy</value>
   </data>
   <data name="GroupBuild" xml:space="preserve">
-    <value>Build</value>
+    <value>Kompilacja</value>
   </data>
   <data name="GroupDebug" xml:space="preserve">
-    <value>Debug</value>
+    <value>Debugowanie</value>
   </data>
   <data name="GroupSupport" xml:space="preserve">
-    <value>Support</value>
+    <value>Wsparcie</value>
   </data>
   <data name="GroupLanguage" xml:space="preserve">
-    <value>Language</value>
+    <value>Język</value>
   </data>
 
   <!-- ── Ribbon item labels ──────────────────────────────────────────────── -->
   <data name="ItemBack" xml:space="preserve">
-    <value>Back</value>
+    <value>Wstecz</value>
   </data>
   <data name="ItemForward" xml:space="preserve">
-    <value>Forward</value>
+    <value>Dalej</value>
   </data>
   <data name="ItemDashboard" xml:space="preserve">
-    <value>Dashboard</value>
+    <value>Pulpit nawigacyjny</value>
   </data>
   <data name="ItemHome" xml:space="preserve">
-    <value>Home</value>
+    <value>Strona główna</value>
   </data>
   <data name="ItemNew" xml:space="preserve">
-    <value>New</value>
+    <value>Nowy</value>
   </data>
   <data name="ItemOpen" xml:space="preserve">
-    <value>Open</value>
+    <value>Otwórz</value>
   </data>
   <data name="ItemSave" xml:space="preserve">
-    <value>Save</value>
+    <value>Zapisz</value>
   </data>
   <data name="ItemSaveAll" xml:space="preserve">
-    <value>Save All</value>
+    <value>Zapisz wszystko</value>
   </data>
   <data name="ItemPaste" xml:space="preserve">
-    <value>Paste</value>
+    <value>Wklej</value>
   </data>
   <data name="ItemCopy" xml:space="preserve">
-    <value>Copy</value>
+    <value>Kopiuj</value>
   </data>
   <data name="ItemCut" xml:space="preserve">
-    <value>Cut</value>
+    <value>Wytnij</value>
   </data>
   <data name="ItemUndo" xml:space="preserve">
-    <value>Undo</value>
+    <value>Cofnij</value>
   </data>
   <data name="ItemRedo" xml:space="preserve">
-    <value>Redo</value>
+    <value>Ponów</value>
   </data>
   <data name="ItemFind" xml:space="preserve">
-    <value>Find</value>
+    <value>Znajdź</value>
   </data>
   <data name="ItemReplace" xml:space="preserve">
-    <value>Replace</value>
+    <value>Zastąp</value>
   </data>
   <data name="ItemGoTo" xml:space="preserve">
-    <value>Go To</value>
+    <value>Przejdź do</value>
   </data>
   <data name="ItemComment" xml:space="preserve">
-    <value>Comment</value>
+    <value>Komentuj</value>
   </data>
   <data name="ItemUncomment" xml:space="preserve">
-    <value>Uncomment</value>
+    <value>Odkomentuj</value>
   </data>
   <data name="ItemExplorer" xml:space="preserve">
-    <value>Explorer</value>
+    <value>Eksplorator</value>
   </data>
   <data name="ItemProblems" xml:space="preserve">
-    <value>Problems</value>
+    <value>Problemy</value>
   </data>
   <data name="ItemTerminal" xml:space="preserve">
     <value>Terminal</value>
   </data>
   <data name="ItemNewLayout" xml:space="preserve">
-    <value>New Layout</value>
+    <value>Nowy układ</value>
   </data>
   <data name="ItemOpenLayout" xml:space="preserve">
-    <value>Open Layout</value>
+    <value>Otwórz układ</value>
   </data>
   <data name="ItemSaveLayout" xml:space="preserve">
-    <value>Save Layout</value>
+    <value>Zapisz układ</value>
   </data>
   <data name="ItemClose" xml:space="preserve">
-    <value>Close</value>
+    <value>Zamknij</value>
   </data>
   <data name="ItemShowWindows" xml:space="preserve">
-    <value>Show Windows</value>
+    <value>Pokaż okna</value>
   </data>
   <data name="ItemExitWindows" xml:space="preserve">
-    <value>Exit Windows</value>
+    <value>Zamknij tryb okien</value>
   </data>
   <data name="ItemTheme" xml:space="preserve">
-    <value>Theme</value>
+    <value>Motyw</value>
   </data>
   <data name="ItemBuild" xml:space="preserve">
-    <value>Build</value>
+    <value>Kompiluj</value>
   </data>
   <data name="ItemRebuild" xml:space="preserve">
-    <value>Rebuild</value>
+    <value>Rekompiluj</value>
   </data>
   <data name="ItemClean" xml:space="preserve">
-    <value>Clean</value>
+    <value>Wyczyść</value>
   </data>
   <data name="ItemStart" xml:space="preserve">
-    <value>Start</value>
+    <value>Uruchom</value>
   </data>
   <data name="ItemStop" xml:space="preserve">
-    <value>Stop</value>
+    <value>Zatrzymaj</value>
   </data>
   <data name="ItemRestart" xml:space="preserve">
-    <value>Restart</value>
+    <value>Uruchom ponownie</value>
   </data>
   <data name="ItemAbout" xml:space="preserve">
-    <value>About</value>
+    <value>O programie</value>
   </data>
   <data name="ItemToggleTheme" xml:space="preserve">
-    <value>Toggle Theme</value>
+    <value>Przełącz motyw</value>
   </data>
   <data name="ItemLanguage" xml:space="preserve">
-    <value>Language</value>
+    <value>Język</value>
   </data>
 
   <!-- ── Screen tips ─────────────────────────────────────────────────────── -->
   <data name="TipBack" xml:space="preserve">
-    <value>Go back</value>
+    <value>Cofnij</value>
   </data>
   <data name="TipForward" xml:space="preserve">
-    <value>Go forward</value>
+    <value>Przejdź dalej</value>
   </data>
   <data name="TipDashboard" xml:space="preserve">
-    <value>Open Dashboard</value>
+    <value>Otwórz pulpit nawigacyjny</value>
   </data>
   <data name="TipHome" xml:space="preserve">
-    <value>Navigate to home view</value>
+    <value>Przejdź do widoku głównego</value>
   </data>
   <data name="TipNew" xml:space="preserve">
-    <value>Create a new file</value>
+    <value>Utwórz nowy plik</value>
   </data>
   <data name="TipOpen" xml:space="preserve">
-    <value>Open a file</value>
+    <value>Otwórz plik</value>
   </data>
   <data name="TipSave" xml:space="preserve">
-    <value>Save the current file</value>
+    <value>Zapisz bieżący plik</value>
   </data>
   <data name="TipSaveAll" xml:space="preserve">
-    <value>Save all open files</value>
+    <value>Zapisz wszystkie otwarte pliki</value>
   </data>
   <data name="TipPaste" xml:space="preserve">
-    <value>Paste from clipboard</value>
+    <value>Wklej ze schowka</value>
   </data>
   <data name="TipCopy" xml:space="preserve">
-    <value>Copy to clipboard</value>
+    <value>Kopiuj do schowka</value>
   </data>
   <data name="TipCut" xml:space="preserve">
-    <value>Cut to clipboard</value>
+    <value>Wytnij do schowka</value>
   </data>
   <data name="TipUndo" xml:space="preserve">
-    <value>Undo last action</value>
+    <value>Cofnij ostatnią czynność</value>
   </data>
   <data name="TipRedo" xml:space="preserve">
-    <value>Redo last undone action</value>
+    <value>Ponów ostatnią cofniętą czynność</value>
   </data>
   <data name="TipFind" xml:space="preserve">
-    <value>Find in current file</value>
+    <value>Znajdź w bieżącym pliku</value>
   </data>
   <data name="TipReplace" xml:space="preserve">
-    <value>Find and replace</value>
+    <value>Znajdź i zastąp</value>
   </data>
   <data name="TipGoTo" xml:space="preserve">
-    <value>Go to line or symbol</value>
+    <value>Przejdź do wiersza lub symbolu</value>
   </data>
   <data name="TipComment" xml:space="preserve">
-    <value>Comment selected lines</value>
+    <value>Komentuj zaznaczone wiersze</value>
   </data>
   <data name="TipUncomment" xml:space="preserve">
-    <value>Uncomment selected lines</value>
+    <value>Odkomentuj zaznaczone wiersze</value>
   </data>
   <data name="TipExplorer" xml:space="preserve">
-    <value>Toggle Solution Explorer</value>
+    <value>Przełącz Eksplorator rozwiązań</value>
   </data>
   <data name="TipProblems" xml:space="preserve">
-    <value>Toggle Problems panel</value>
+    <value>Przełącz panel problemów</value>
   </data>
   <data name="TipTerminal" xml:space="preserve">
-    <value>Toggle Terminal panel</value>
+    <value>Przełącz panel terminala</value>
   </data>
   <data name="TipNewLayout" xml:space="preserve">
-    <value>Create a new dock layout</value>
+    <value>Utwórz nowy układ dokowania</value>
   </data>
   <data name="TipOpenLayout" xml:space="preserve">
-    <value>Open a saved dock layout</value>
+    <value>Otwórz zapisany układ dokowania</value>
   </data>
   <data name="TipSaveLayout" xml:space="preserve">
-    <value>Save the current dock layout</value>
+    <value>Zapisz bieżący układ dokowania</value>
   </data>
   <data name="TipCloseLayout" xml:space="preserve">
-    <value>Close the current dock layout</value>
+    <value>Zamknij bieżący układ dokowania</value>
   </data>
   <data name="TipShowWindows" xml:space="preserve">
-    <value>Show all floating windows</value>
+    <value>Pokaż wszystkie pływające okna</value>
   </data>
   <data name="TipExitWindows" xml:space="preserve">
-    <value>Exit floating windows mode</value>
+    <value>Wyjdź z trybu pływających okien</value>
   </data>
   <data name="TipBuild" xml:space="preserve">
-    <value>Build the project</value>
+    <value>Skompiluj projekt</value>
   </data>
   <data name="TipRebuild" xml:space="preserve">
-    <value>Rebuild the project</value>
+    <value>Rekompiluj projekt</value>
   </data>
   <data name="TipClean" xml:space="preserve">
-    <value>Clean build outputs</value>
+    <value>Wyczyść wyniki kompilacji</value>
   </data>
   <data name="TipStart" xml:space="preserve">
-    <value>Start debugging</value>
+    <value>Rozpocznij debugowanie</value>
   </data>
   <data name="TipStop" xml:space="preserve">
-    <value>Stop debugging</value>
+    <value>Zatrzymaj debugowanie</value>
   </data>
   <data name="TipRestart" xml:space="preserve">
-    <value>Restart debugging</value>
+    <value>Uruchom ponownie debugowanie</value>
   </data>
   <data name="TipAbout" xml:space="preserve">
-    <value>About this application</value>
+    <value>O tej aplikacji</value>
   </data>
   <data name="TipQatSave" xml:space="preserve">
-    <value>Save file</value>
+    <value>Zapisz plik</value>
   </data>
   <data name="TipQatUndo" xml:space="preserve">
-    <value>Undo last action</value>
+    <value>Cofnij ostatnią czynność</value>
   </data>
   <data name="TipQatBuild" xml:space="preserve">
-    <value>Build project</value>
+    <value>Kompiluj projekt</value>
   </data>
   <data name="TipQatTheme" xml:space="preserve">
-    <value>Toggle dark/light theme</value>
+    <value>Przełącz między motywem ciemnym/jasnym</value>
   </data>
   <data name="TipLanguage" xml:space="preserve">
-    <value>Switch application language</value>
+    <value>Zmień język aplikacji</value>
   </data>
 
   <!-- ── Backstage item content ──────────────────────────────────────────── -->
   <data name="BsNew" xml:space="preserve">
-    <value>Create a new file.</value>
+    <value>Utwórz nowy plik.</value>
   </data>
   <data name="BsOpen" xml:space="preserve">
-    <value>Open an existing file.</value>
+    <value>Otwórz istniejący plik.</value>
   </data>
   <data name="BsSave" xml:space="preserve">
-    <value>Save the current file.</value>
+    <value>Zapisz bieżący plik.</value>
   </data>
   <data name="BsSaveAll" xml:space="preserve">
-    <value>Save all open files.</value>
+    <value>Zapisz wszystkie otwarte pliki.</value>
   </data>
 
   <!-- ── Solution Explorer context menu ─────────────────────────────────── -->
   <data name="CtxOpen" xml:space="preserve">
-    <value>Open</value>
+    <value>Otwórz</value>
   </data>
   <data name="CtxOpenContainingFolder" xml:space="preserve">
-    <value>Open Containing Folder</value>
+    <value>Otwórz folder nadrzędny</value>
   </data>
   <data name="CtxAdd" xml:space="preserve">
-    <value>Add</value>
+    <value>Dodaj</value>
   </data>
   <data name="CtxNewFile" xml:space="preserve">
-    <value>New File...</value>
+    <value>Nowy plik...</value>
   </data>
   <data name="CtxNewFolder" xml:space="preserve">
-    <value>New Folder...</value>
+    <value>Nowy folder...</value>
   </data>
   <data name="CtxAddExistingFile" xml:space="preserve">
-    <value>Add Existing File...</value>
+    <value>Dodaj istniejący plik...</value>
   </data>
   <data name="CtxCut" xml:space="preserve">
-    <value>Cut</value>
+    <value>Wytnij</value>
   </data>
   <data name="CtxCopy" xml:space="preserve">
-    <value>Copy</value>
+    <value>Kopiuj</value>
   </data>
   <data name="CtxPaste" xml:space="preserve">
-    <value>Paste</value>
+    <value>Wklej</value>
   </data>
   <data name="CtxRename" xml:space="preserve">
-    <value>Rename</value>
+    <value>Zmień nazwę</value>
   </data>
   <data name="CtxDelete" xml:space="preserve">
-    <value>Delete</value>
+    <value>Usuń</value>
   </data>
   <data name="CtxCopyFullPath" xml:space="preserve">
-    <value>Copy Full Path</value>
+    <value>Kopiuj pełną ścieżkę</value>
   </data>
   <data name="CtxProperties" xml:space="preserve">
-    <value>Properties...</value>
+    <value>Właściwości...</value>
   </data>
 
   <!-- ── Solution Explorer tool window ──────────────────────────────────── -->
   <data name="ToolSolutionExplorer" xml:space="preserve">
-    <value>Solution Explorer</value>
+    <value>Eksplorator rozwiązań</value>
   </data>
   <data name="FilterWatermark" xml:space="preserve">
-    <value>Filter...</value>
+    <value>Filtruj...</value>
   </data>
   <data name="ExpandAll" xml:space="preserve">
-    <value>Expand All</value>
+    <value>Rozwiń wszystko</value>
   </data>
   <data name="CollapseAll" xml:space="preserve">
-    <value>Collapse All</value>
+    <value>Zwiń wszystko</value>
   </data>
   <data name="LoadingPlaceholder" xml:space="preserve">
-    <value>Loading…</value>
+    <value>Ładowanie…</value>
   </data>
   <data name="ItemsCount" xml:space="preserve">
-    <value> items</value>
+    <value> elementy</value>
   </data>
   <data name="SelectedCount" xml:space="preserve">
-    <value> selected</value>
+    <value> zaznaczono</value>
   </data>
 
   <!-- ── AI Chat panel ───────────────────────────────────────────────────── -->
   <data name="ChatSend" xml:space="preserve">
-    <value>Send</value>
+    <value>Wyślij</value>
   </data>
   <data name="ChatStop" xml:space="preserve">
-    <value>Stop</value>
+    <value>Zatrzymaj</value>
   </data>
   <data name="ChatClear" xml:space="preserve">
-    <value>Clear</value>
+    <value>Wyczyść</value>
   </data>
   <data name="ChatProviderLabel" xml:space="preserve">
-    <value>Provider:</value>
+    <value>Dostawca:</value>
   </data>
   <data name="ChatToolCall" xml:space="preserve">
-    <value>tool call</value>
+    <value>wywołanie narzędzia</value>
   </data>
 </root>

@@ -78,6 +78,7 @@ public sealed class LocalizationService : ObservableObject
 
     // ── Solution Explorer tool window ──────────────────────────────────────
 
+    public string ToolSolutionExplorer => this[nameof(ToolSolutionExplorer)];
     public string FilterWatermark     => this[nameof(FilterWatermark)];
     public string ExpandAll           => this[nameof(ExpandAll)];
     public string CollapseAll         => this[nameof(CollapseAll)];
