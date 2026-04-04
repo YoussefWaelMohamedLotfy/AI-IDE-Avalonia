@@ -154,10 +154,30 @@ public partial class MainWindowViewModel : ObservableObject
         // Notify the FlowDirection binding so the window mirrors for RTL languages.
         OnPropertyChanged(nameof(FlowDirection));
 
-        // Update ribbon labels in-place — do NOT replace the Ribbon object.
-        // Replacing Ribbon tears down the entire ribbon visual tree, evicting the
-        // language and theme ComboBox controls that live inside RibbonItem.Content.
-        IdeRibbonFactory.RefreshRibbonLabels(Ribbon, _loc);
+        // Build a fresh RibbonViewModel with updated strings and preserve the
+        // current UI state (selected tab, minimized, key-tip mode).
+        var selectedTabId = Ribbon.SelectedTabId;
+        var isMinimized   = Ribbon.IsMinimized;
+        var isKeyTipMode  = Ribbon.IsKeyTipMode;
+        var newRibbon = IdeRibbonFactory.BuildRibbon(_loc);
+        newRibbon.SelectedTabId = selectedTabId;
+        newRibbon.IsMinimized   = isMinimized;
+        newRibbon.IsKeyTipMode  = isKeyTipMode;
+
+        // IMPORTANT: inject custom Content (ComboBox controls) into the new
+        // viewmodel items BEFORE assigning Ribbon = newRibbon.
+        //
+        // Setting Ribbon = newRibbon fires PropertyChanged("Ribbon") which the
+        // compiled binding (TabsSource="{CompiledBinding Ribbon.Tabs}") handles
+        // synchronously: it sets TabsSourceProperty = newRibbon.Tabs, which
+        // immediately triggers RebuildTabs() on the ribbon control.
+        // RebuildTabs() clones every item via ToRibbonItem() which copies
+        // node.Content into the cloned RibbonItem. If Content is not set yet,
+        // the ComboBoxes will be absent from the cloned items and never appear.
+        IdeRibbonFactory.SetThemeContent(newRibbon, _themeContent);
+        IdeRibbonFactory.SetLanguageSelectorContent(newRibbon, _langContent);
+
+        Ribbon = newRibbon;
 
         // Rebuild Quick Access Toolbar items with new strings.
         QuickAccessItems.Clear();
