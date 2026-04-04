@@ -1,8 +1,10 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.ComponentModel;
 using System.Threading.Tasks;
 using System.Windows.Input;
+using Avalonia.Media;
 using AI_IDE_Avalonia.Models;
 using AI_IDE_Avalonia.Services;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -22,9 +24,14 @@ public partial class MainWindowViewModel : ObservableObject
 {
     private readonly IFactory? _factory;
     private readonly ILogger<MainWindowViewModel> _logger;
+    private readonly LocalizationService _loc;
     private IRootDock? _layout;
     private string _globalStatus = "Global: (none)";
     private readonly DictionaryRibbonCommandCatalog _catalogImpl;
+
+    // Custom ribbon item contents preserved across tab rebuilds.
+    private object? _themeContent;
+    private object? _langContent;
 
     // Delegates set lazily by the view once it has a visual root (required for file dialogs / theme).
     private Func<Task>? _openLayoutFunc;
@@ -38,6 +45,7 @@ public partial class MainWindowViewModel : ObservableObject
     [ObservableProperty] private string _appTitle = "Avalonia AI IDE";
     [ObservableProperty] private RibbonQuickAccessPlacement _quickAccessPlacement = RibbonQuickAccessPlacement.Below;
     [ObservableProperty] private RibbonStateOwnershipMode _stateOwnershipMode = RibbonStateOwnershipMode.Synchronized;
+    [ObservableProperty] private RibbonViewModel _ribbon = null!;
 
     public IRootDock? Layout
     {
@@ -59,7 +67,13 @@ public partial class MainWindowViewModel : ObservableObject
     /// <summary>Saves all open documents that have a file path.</summary>
     public ICommand SaveAllDocumentsCommand { get; }
 
-    public RibbonViewModel Ribbon { get; }
+    /// <summary>
+    /// The current layout direction derived from the active locale.
+    /// Binding this to <c>Window.FlowDirection</c> (and/or the root UserControl) automatically
+    /// mirrors every child — documents, tools, ribbon — for RTL languages such as Arabic.
+    /// </summary>
+    public FlowDirection FlowDirection => _loc.FlowDirection;
+
     public IRibbonCommandCatalog CommandCatalog => _catalogImpl;
     public IRibbonStateStore StateStore { get; }
     public ObservableCollection<RibbonItem> QuickAccessItems { get; }
@@ -70,9 +84,10 @@ public partial class MainWindowViewModel : ObservableObject
     public AI_IDE_Avalonia.ViewModels.Tools.SolutionExplorerViewModel? SolutionExplorer =>
         (_factory as DockFactory)?.SolutionExplorer;
 
-    public MainWindowViewModel(DocumentService documentService, ILogger<MainWindowViewModel> logger)
+    public MainWindowViewModel(DocumentService documentService, ILogger<MainWindowViewModel> logger, LocalizationService loc)
     {
         _logger = logger;
+        _loc = loc;
         _factory = new DockFactory(new DemoData(), documentService);
 
         DebugFactoryEvents(_factory);
@@ -97,10 +112,8 @@ public partial class MainWindowViewModel : ObservableObject
         SaveDocumentCommand     = new AsyncRelayCommand(() => _saveDocumentFunc?.Invoke()     ?? Task.CompletedTask);
         SaveAllDocumentsCommand = new AsyncRelayCommand(() => _saveAllDocumentsFunc?.Invoke() ?? Task.CompletedTask);
 
-        Ribbon = IdeRibbonFactory.BuildRibbon();
+        Ribbon = IdeRibbonFactory.BuildRibbon(loc);
         _catalogImpl = IdeRibbonFactory.BuildCommandCatalog(id => GlobalStatus = $"Ribbon: {id}");
-
-        // Navigation commands
         _catalogImpl.Register("nav-back",      new RelayCommand(() => Layout?.GoBack?.Execute(null)));
         _catalogImpl.Register("nav-forward",   new RelayCommand(() => Layout?.GoForward?.Execute(null)));
         _catalogImpl.Register("nav-dashboard", new RelayCommand(() => Layout?.Navigate?.Execute("Dashboard")));
@@ -124,17 +137,65 @@ public partial class MainWindowViewModel : ObservableObject
         _catalogImpl.Register("toggle-theme", new RelayCommand(() => _toggleThemeAction?.Invoke()));
 
         StateStore = new InMemoryRibbonStateStore();
-        QuickAccessItems = IdeRibbonFactory.BuildQuickAccessItems();
+        QuickAccessItems = IdeRibbonFactory.BuildQuickAccessItems(loc);
         BackstageItems = IdeRibbonFactory.BuildBackstageItems(
+            loc,
             newCmd:     new RelayCommand(() => { GlobalStatus = "Ribbon: New File";  IsBackstageOpen = false; }),
             openCmd:    new RelayCommand(() => { GlobalStatus = "Ribbon: Open File"; IsBackstageOpen = false; }),
             saveCmd:    new AsyncRelayCommand(async () => { IsBackstageOpen = false; await (_saveDocumentFunc?.Invoke()     ?? Task.CompletedTask); }),
             saveAllCmd: new AsyncRelayCommand(async () => { IsBackstageOpen = false; await (_saveAllDocumentsFunc?.Invoke() ?? Task.CompletedTask); })
         );
+
+        _loc.PropertyChanged += OnLocalizationChanged;
     }
 
-    internal void WireLayoutIO(Func<Task> open, Func<Task> save, Action close)
+    private void OnLocalizationChanged(object? sender, PropertyChangedEventArgs e)
     {
+        // Notify the FlowDirection binding so the window mirrors for RTL languages.
+        OnPropertyChanged(nameof(FlowDirection));
+
+        // Build a fresh RibbonViewModel with updated strings and preserve the
+        // current UI state (selected tab, minimized, key-tip mode).
+        var selectedTabId = Ribbon.SelectedTabId;
+        var isMinimized   = Ribbon.IsMinimized;
+        var isKeyTipMode  = Ribbon.IsKeyTipMode;
+        var newRibbon = IdeRibbonFactory.BuildRibbon(_loc);
+        newRibbon.SelectedTabId = selectedTabId;
+        newRibbon.IsMinimized   = isMinimized;
+        newRibbon.IsKeyTipMode  = isKeyTipMode;
+
+        // IMPORTANT: inject custom Content (ComboBox controls) into the new
+        // viewmodel items BEFORE assigning Ribbon = newRibbon.
+        //
+        // Setting Ribbon = newRibbon fires PropertyChanged("Ribbon") which the
+        // compiled binding (TabsSource="{CompiledBinding Ribbon.Tabs}") handles
+        // synchronously: it sets TabsSourceProperty = newRibbon.Tabs, which
+        // immediately triggers RebuildTabs() on the ribbon control.
+        // RebuildTabs() clones every item via ToRibbonItem() which copies
+        // node.Content into the cloned RibbonItem. If Content is not set yet,
+        // the ComboBoxes will be absent from the cloned items and never appear.
+        IdeRibbonFactory.SetThemeContent(newRibbon, _themeContent);
+        IdeRibbonFactory.SetLanguageSelectorContent(newRibbon, _langContent);
+
+        Ribbon = newRibbon;
+
+        // Rebuild Quick Access Toolbar items with new strings.
+        QuickAccessItems.Clear();
+        foreach (var item in IdeRibbonFactory.BuildQuickAccessItems(_loc))
+            QuickAccessItems.Add(item);
+
+        // Rebuild Backstage items with new strings.
+        BackstageItems.Clear();
+        foreach (var item in IdeRibbonFactory.BuildBackstageItems(
+            _loc,
+            newCmd:     new RelayCommand(() => { GlobalStatus = "Ribbon: New File";  IsBackstageOpen = false; }),
+            openCmd:    new RelayCommand(() => { GlobalStatus = "Ribbon: Open File"; IsBackstageOpen = false; }),
+            saveCmd:    new AsyncRelayCommand(async () => { IsBackstageOpen = false; await (_saveDocumentFunc?.Invoke()     ?? Task.CompletedTask); }),
+            saveAllCmd: new AsyncRelayCommand(async () => { IsBackstageOpen = false; await (_saveAllDocumentsFunc?.Invoke() ?? Task.CompletedTask); })))
+            BackstageItems.Add(item);
+    }
+
+    internal void WireLayoutIO(Func<Task> open, Func<Task> save, Action close)    {
         _openLayoutFunc  = open;
         _saveLayoutFunc  = save;
         _closeLayoutFunc = close;
@@ -147,6 +208,26 @@ public partial class MainWindowViewModel : ObservableObject
     }
 
     internal void WireToggleTheme(Action toggleTheme) => _toggleThemeAction = toggleTheme;
+
+    /// <summary>
+    /// Stores the theme-preset ComboBox and injects it into the ribbon's View → Themes group.
+    /// Also re-injects after every language rebuild so the content is never lost.
+    /// </summary>
+    internal void WireThemeContent(object? content)
+    {
+        _themeContent = content;
+        IdeRibbonFactory.SetThemeContent(Ribbon, content);
+    }
+
+    /// <summary>
+    /// Stores the language-selector ComboBox and injects it into the ribbon's Home → Language group.
+    /// Also re-injects after every language rebuild so the content is never lost.
+    /// </summary>
+    internal void WireLangContent(object? content)
+    {
+        _langContent = content;
+        IdeRibbonFactory.SetLanguageSelectorContent(Ribbon, content);
+    }
 
     /// <summary>
     /// Loads the filesystem tree for <paramref name="folderPath"/> into the Solution Explorer

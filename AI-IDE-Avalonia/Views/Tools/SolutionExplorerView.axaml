@@ -15,12 +15,12 @@
 
       <TextBox Grid.Column="0"
                Text="{Binding FilterText}"
-               Watermark="Filter..."
+               Watermark="{Binding Loc.FilterWatermark}"
                Margin="4"
                Classes="clearButton" />
 
       <Button Grid.Column="1"
-              ToolTip.Tip="Expand All"
+              ToolTip.Tip="{Binding Loc.ExpandAll}"
               Click="OnExpandAll"
               Margin="0,4,2,4" Padding="6,4">
         <PathIcon Width="12" Height="12"
@@ -28,7 +28,7 @@
       </Button>
 
       <Button Grid.Column="2"
-              ToolTip.Tip="Collapse All"
+              ToolTip.Tip="{Binding Loc.CollapseAll}"
               Click="OnCollapseAll"
               Margin="0,4,4,4" Padding="6,4">
         <PathIcon Width="12" Height="12"
@@ -64,7 +64,7 @@
               <ProgressBar IsIndeterminate="True"
                            Width="12" Height="12"
                            VerticalAlignment="Center" />
-              <TextBlock Text="Loading…"
+              <TextBlock Text="{ReflectionBinding DataContext.Loc.LoadingPlaceholder, RelativeSource={RelativeSource AncestorType=UserControl}}"
                          FontStyle="Italic"
                          VerticalAlignment="Center" />
             </StackPanel>
@@ -115,20 +115,16 @@
         <TextBlock Grid.Column="0"
                    VerticalAlignment="Center"
                    FontSize="11"
-                   Opacity="0.65">
-          <Run Text="{Binding TotalNodeCount}" />
-          <Run Text=" items" />
-        </TextBlock>
+                   Opacity="0.65"
+                   Text="{Binding ItemsSummary}" />
 
         <!-- Selected count — only shown when multiple nodes are selected -->
         <TextBlock Grid.Column="1"
                    VerticalAlignment="Center"
                    FontSize="11"
                    Opacity="0.65"
-                   IsVisible="{Binding HasMultipleSelected}">
-          <Run Text="{Binding SelectedNodeCount}" />
-          <Run Text=" selected" />
-        </TextBlock>
+                   IsVisible="{Binding HasMultipleSelected}"
+                   Text="{Binding SelectedSummary}" />
 
       </Grid>
     </Border>
