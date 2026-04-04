@@ -382,6 +382,9 @@
   </data>
 
   <!-- ── Solution Explorer tool window ──────────────────────────────────── -->
+  <data name="ToolSolutionExplorer" xml:space="preserve">
+    <value>Projektmappen-Explorer</value>
+  </data>
   <data name="FilterWatermark" xml:space="preserve">
     <value>Filtern...</value>
   </data>

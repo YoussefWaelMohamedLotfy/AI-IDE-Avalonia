@@ -193,6 +193,10 @@ public partial class MainWindowViewModel : ObservableObject
             saveCmd:    new AsyncRelayCommand(async () => { IsBackstageOpen = false; await (_saveDocumentFunc?.Invoke()     ?? Task.CompletedTask); }),
             saveAllCmd: new AsyncRelayCommand(async () => { IsBackstageOpen = false; await (_saveAllDocumentsFunc?.Invoke() ?? Task.CompletedTask); })))
             BackstageItems.Add(item);
+
+        // Update tool window header titles with new strings.
+        if (SolutionExplorer is { } se)
+            se.Title = _loc.ToolSolutionExplorer;
     }
 
     internal void WireLayoutIO(Func<Task> open, Func<Task> save, Action close)    {
