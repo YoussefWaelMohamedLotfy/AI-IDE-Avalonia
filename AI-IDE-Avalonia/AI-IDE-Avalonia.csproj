@@ -37,6 +37,10 @@
     <EmbeddedResource Update="Resources\Strings.ar.resx">
       <Culture>ar</Culture>
     </EmbeddedResource>
+    <EmbeddedResource Update="Resources\Strings.resx">
+      <Generator>PublicResXFileCodeGenerator</Generator>
+      <LastGenOutput>Strings.Designer.cs</LastGenOutput>
+    </EmbeddedResource>
   </ItemGroup>
 
   <ItemGroup>
@@ -77,5 +81,13 @@
     </PackageReference>
     <PackageReference Include="System.Reactive" Version="6.1.0" />
     <PackageReference Include="TextMateSharp.Grammars" Version="2.0.3" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Update="Resources\Strings.Designer.cs">
+      <DesignTime>True</DesignTime>
+      <AutoGen>True</AutoGen>
+      <DependentUpon>Strings.resx</DependentUpon>
+    </Compile>
   </ItemGroup>
 </Project>
