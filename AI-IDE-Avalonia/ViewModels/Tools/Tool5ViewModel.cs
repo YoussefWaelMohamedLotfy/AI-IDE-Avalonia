@@ -93,12 +93,20 @@ public partial class Tool5ViewModel : Tool, IAsyncDisposable
     // before it is initialized (e.g. during design-time preview).
     private AIProviderService? _providerService;
     private DocumentService? _documentService;
+    private LocalizationService? _locService;
 
     private AIProviderService ProviderService =>
         _providerService ??= App.Services.GetRequiredService<AIProviderService>();
 
     private DocumentService DocumentSvc =>
         _documentService ??= App.Services.GetRequiredService<DocumentService>();
+
+    /// <summary>Provides localized strings for the AI chat panel.</summary>
+    public LocalizationService Loc =>
+        _locService ??= App.Services.GetRequiredService<LocalizationService>();
+
+    /// <summary>Localized label for tool-call bubbles in the chat.</summary>
+    public string ChatToolCallLabel => Loc.ChatToolCall;
 
     private void OnProviderChanged(object? sender, EventArgs e) =>
         _ = HandleProviderChangedAsync();

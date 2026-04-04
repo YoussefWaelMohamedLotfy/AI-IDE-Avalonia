@@ -95,42 +95,43 @@ public partial class SolutionExplorerView : UserControl
 
     private static ContextMenu BuildContextMenu(SolutionExplorerViewModel vm, TreeNode node)
     {
+        var loc = vm.Loc;
         var menu = new ContextMenu();
 
         // ── Group 1: Open ─────────────────────────────────────────────────────
-        menu.Items.Add(MakeItem("Open",                    "Ctrl+O", IconFile,   vm.OpenNodeCommand,           node));
-        menu.Items.Add(MakeItem("Open Containing Folder",  null,     IconFolder, vm.OpenContainingFolderCommand, node));
+        menu.Items.Add(MakeItem(loc.CtxOpen,                   "Ctrl+O", IconFile,   vm.OpenNodeCommand,           node));
+        menu.Items.Add(MakeItem(loc.CtxOpenContainingFolder,   null,     IconFolder, vm.OpenContainingFolderCommand, node));
         menu.Items.Add(new Separator());
 
         // ── Group 2: Add (folders only) ───────────────────────────────────────
         if (node.IsFolder)
         {
-            var addItem = new MenuItem { Header = "Add", Icon = MakeIcon(IconPlus) };
-            addItem.Items.Add(MakeItem("New File...",           "Ctrl+N", IconFile,   vm.AddNewFileCommand,      node));
-            addItem.Items.Add(MakeItem("New Folder...",         null,     IconFolder, vm.AddNewFolderCommand,    node));
+            var addItem = new MenuItem { Header = loc.CtxAdd, Icon = MakeIcon(IconPlus) };
+            addItem.Items.Add(MakeItem(loc.CtxNewFile,         "Ctrl+N", IconFile,   vm.AddNewFileCommand,      node));
+            addItem.Items.Add(MakeItem(loc.CtxNewFolder,       null,     IconFolder, vm.AddNewFolderCommand,    node));
             addItem.Items.Add(new Separator());
-            addItem.Items.Add(MakeItem("Add Existing File...",  null,     IconFile,   vm.AddExistingFileCommand, node));
+            addItem.Items.Add(MakeItem(loc.CtxAddExistingFile, null,     IconFile,   vm.AddExistingFileCommand, node));
             menu.Items.Add(addItem);
             menu.Items.Add(new Separator());
         }
 
         // ── Group 3: Edit ─────────────────────────────────────────────────────
-        menu.Items.Add(MakeItem("Cut",   "Ctrl+X", IconCut,   vm.CutNodeCommand,   node));
-        menu.Items.Add(MakeItem("Copy",  "Ctrl+C", IconCopy,  vm.CopyNodeCommand,  node));
-        menu.Items.Add(MakeItem("Paste", "Ctrl+V", IconPaste, vm.PasteNodeCommand, node));
+        menu.Items.Add(MakeItem(loc.CtxCut,   "Ctrl+X", IconCut,   vm.CutNodeCommand,   node));
+        menu.Items.Add(MakeItem(loc.CtxCopy,  "Ctrl+C", IconCopy,  vm.CopyNodeCommand,  node));
+        menu.Items.Add(MakeItem(loc.CtxPaste, "Ctrl+V", IconPaste, vm.PasteNodeCommand, node));
         menu.Items.Add(new Separator());
 
         // ── Group 4: Node operations ──────────────────────────────────────────
-        menu.Items.Add(MakeItem("Rename", "F2",     null,       vm.RenameNodeCommand, node));
-        menu.Items.Add(MakeItem("Delete", "Delete", IconDelete, vm.RemoveNodeCommand, node));
+        menu.Items.Add(MakeItem(loc.CtxRename, "F2",     null,       vm.RenameNodeCommand, node));
+        menu.Items.Add(MakeItem(loc.CtxDelete, "Delete", IconDelete, vm.RemoveNodeCommand, node));
         menu.Items.Add(new Separator());
 
         // ── Group 5: Clipboard ────────────────────────────────────────────────
-        menu.Items.Add(MakeItem("Copy Full Path", null, null, vm.CopyFullPathCommand, node));
+        menu.Items.Add(MakeItem(loc.CtxCopyFullPath, null, null, vm.CopyFullPathCommand, node));
         menu.Items.Add(new Separator());
 
         // ── Group 6: Properties ───────────────────────────────────────────────
-        menu.Items.Add(MakeItem("Properties...", "Alt+Enter", IconProperties, vm.ShowPropertiesCommand, node));
+        menu.Items.Add(MakeItem(loc.CtxProperties, "Alt+Enter", IconProperties, vm.ShowPropertiesCommand, node));
 
         return menu;
     }

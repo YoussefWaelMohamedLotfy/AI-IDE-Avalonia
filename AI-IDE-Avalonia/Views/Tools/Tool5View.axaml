@@ -17,7 +17,7 @@
             BorderThickness="0,0,0,1"
             BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}">
       <Grid ColumnDefinitions="Auto,*">
-        <TextBlock Text="Provider:"
+        <TextBlock Text="{Binding Loc.ChatProviderLabel}"
                    VerticalAlignment="Center"
                    FontSize="12"
                    Opacity="0.7"
@@ -140,7 +140,7 @@
                         Padding="10,7"
                         Margin="0,0,64,0">
                   <StackPanel>
-                    <TextBlock Text="tool call"
+                    <TextBlock Text="{ReflectionBinding DataContext.ChatToolCallLabel, RelativeSource={RelativeSource AncestorType=UserControl}}"
                                FontSize="10"
                                Foreground="#4CAF82"
                                Opacity="0.8"
@@ -185,21 +185,21 @@
                  Padding="10,7"
                  VerticalContentAlignment="Center" />
         <Button Grid.Column="1"
-                Content="Send"
+                Content="{Binding Loc.ChatSend}"
                 Command="{Binding SendCommand}"
                 IsVisible="{Binding !IsSending}"
                 Margin="6,0,0,0"
                 Padding="14,7"
                 VerticalAlignment="Stretch" />
         <Button Grid.Column="1"
-                Content="Stop"
+                Content="{Binding Loc.ChatStop}"
                 Command="{Binding CancelSendCommand}"
                 IsVisible="{Binding IsSending}"
                 Margin="6,0,0,0"
                 Padding="14,7"
                 VerticalAlignment="Stretch" />
         <Button Grid.Column="2"
-                Content="Clear"
+                Content="{Binding Loc.ChatClear}"
                 Command="{Binding ClearCommand}"
                 Margin="4,0,0,0"
                 Padding="14,7"
