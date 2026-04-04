@@ -5,6 +5,7 @@ using System.ComponentModel;
 using System.Threading.Tasks;
 using System.Windows.Input;
 using Avalonia.Media;
+using Avalonia.Threading;
 using AI_IDE_Avalonia.Models;
 using AI_IDE_Avalonia.Services;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -151,40 +152,49 @@ public partial class MainWindowViewModel : ObservableObject
 
     private void OnLocalizationChanged(object? sender, PropertyChangedEventArgs e)
     {
-        // Notify the FlowDirection binding so the window mirrors for RTL languages.
+        // Notify the FlowDirection binding immediately so the window mirrors for RTL languages.
         OnPropertyChanged(nameof(FlowDirection));
 
-        // Replace the entire RibbonViewModel so Avalonia's compiled bindings
-        // (Ribbon.Tabs, Ribbon.SelectedTabId, etc.) re-evaluate against the new
-        // instance. This is more reliable than clearing/re-adding Ribbon.Tabs
-        // because the alpha RibbonControl library may not observe CollectionChanged.
-        var selectedTabId = Ribbon.SelectedTabId;
-        var isMinimized   = Ribbon.IsMinimized;
-        var isKeyTipMode  = Ribbon.IsKeyTipMode;
-        var newRibbon = IdeRibbonFactory.BuildRibbon(_loc);
-        newRibbon.SelectedTabId = selectedTabId;
-        newRibbon.IsMinimized   = isMinimized;
-        newRibbon.IsKeyTipMode  = isKeyTipMode;
-        Ribbon = newRibbon; // raises PropertyChanged("Ribbon") → all nested bindings re-evaluate
+        // Defer the ribbon rebuild to the next dispatcher tick.
+        // The language ComboBox's SelectionChanged fires this handler synchronously — if we
+        // replace the Ribbon object right away, the old ribbon's visual tree (including the
+        // open dropdown) is torn down mid-interaction and the dropdown disappears.
+        // Posting at Background priority lets the current event finish (dropdown closes
+        // naturally) before the ribbon is swapped out.
+        Dispatcher.UIThread.Post(() =>
+        {
+            // Replace the entire RibbonViewModel so Avalonia's compiled bindings
+            // (Ribbon.Tabs, Ribbon.SelectedTabId, etc.) re-evaluate against the new
+            // instance. This is more reliable than clearing/re-adding Ribbon.Tabs
+            // because the alpha RibbonControl library may not observe CollectionChanged.
+            var selectedTabId = Ribbon.SelectedTabId;
+            var isMinimized   = Ribbon.IsMinimized;
+            var isKeyTipMode  = Ribbon.IsKeyTipMode;
+            var newRibbon = IdeRibbonFactory.BuildRibbon(_loc);
+            newRibbon.SelectedTabId = selectedTabId;
+            newRibbon.IsMinimized   = isMinimized;
+            newRibbon.IsKeyTipMode  = isKeyTipMode;
+            Ribbon = newRibbon; // raises PropertyChanged("Ribbon") → all nested bindings re-evaluate
 
-        // Re-inject custom content into the freshly-built tabs.
-        IdeRibbonFactory.SetThemeContent(Ribbon, _themeContent);
-        IdeRibbonFactory.SetLanguageSelectorContent(Ribbon, _langContent);
+            // Re-inject custom content into the freshly-built tabs.
+            IdeRibbonFactory.SetThemeContent(Ribbon, _themeContent);
+            IdeRibbonFactory.SetLanguageSelectorContent(Ribbon, _langContent);
 
-        // Rebuild Quick Access Toolbar items with new strings.
-        QuickAccessItems.Clear();
-        foreach (var item in IdeRibbonFactory.BuildQuickAccessItems(_loc))
-            QuickAccessItems.Add(item);
+            // Rebuild Quick Access Toolbar items with new strings.
+            QuickAccessItems.Clear();
+            foreach (var item in IdeRibbonFactory.BuildQuickAccessItems(_loc))
+                QuickAccessItems.Add(item);
 
-        // Rebuild Backstage items with new strings.
-        BackstageItems.Clear();
-        foreach (var item in IdeRibbonFactory.BuildBackstageItems(
-            _loc,
-            newCmd:     new RelayCommand(() => { GlobalStatus = "Ribbon: New File";  IsBackstageOpen = false; }),
-            openCmd:    new RelayCommand(() => { GlobalStatus = "Ribbon: Open File"; IsBackstageOpen = false; }),
-            saveCmd:    new AsyncRelayCommand(async () => { IsBackstageOpen = false; await (_saveDocumentFunc?.Invoke()     ?? Task.CompletedTask); }),
-            saveAllCmd: new AsyncRelayCommand(async () => { IsBackstageOpen = false; await (_saveAllDocumentsFunc?.Invoke() ?? Task.CompletedTask); })))
-            BackstageItems.Add(item);
+            // Rebuild Backstage items with new strings.
+            BackstageItems.Clear();
+            foreach (var item in IdeRibbonFactory.BuildBackstageItems(
+                _loc,
+                newCmd:     new RelayCommand(() => { GlobalStatus = "Ribbon: New File";  IsBackstageOpen = false; }),
+                openCmd:    new RelayCommand(() => { GlobalStatus = "Ribbon: Open File"; IsBackstageOpen = false; }),
+                saveCmd:    new AsyncRelayCommand(async () => { IsBackstageOpen = false; await (_saveDocumentFunc?.Invoke()     ?? Task.CompletedTask); }),
+                saveAllCmd: new AsyncRelayCommand(async () => { IsBackstageOpen = false; await (_saveAllDocumentsFunc?.Invoke() ?? Task.CompletedTask); })))
+                BackstageItems.Add(item);
+        }, DispatcherPriority.Background);
     }
 
     internal void WireLayoutIO(Func<Task> open, Func<Task> save, Action close)    {
