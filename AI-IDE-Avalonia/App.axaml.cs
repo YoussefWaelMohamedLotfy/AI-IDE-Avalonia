@@ -78,6 +78,25 @@ public partial class App : Application
             IdeRibbonFactory.SetThemeContent(mainWindowViewModel.Ribbon, comboBox);
         }
 
+        // Inject the language selector ComboBox into the ribbon BEFORE setting DataContext.
+        var locService = Services.GetRequiredService<LocalizationService>();
+        var langOptions = new[] { "English", "العربية" };
+        var langComboBox = new ComboBox
+        {
+            Width = 120,
+            Height = 24,
+            FontSize = 11,
+            Padding = new Thickness(6, 2),
+            VerticalAlignment = VerticalAlignment.Center,
+            ItemsSource = langOptions,
+            SelectedIndex = 0,
+        };
+        langComboBox.SelectionChanged += (_, _) =>
+        {
+            locService.SetCulture(langComboBox.SelectedIndex == 1 ? "ar" : "en");
+        };
+        IdeRibbonFactory.SetLanguageSelectorContent(mainWindowViewModel.Ribbon, langComboBox);
+
         switch (ApplicationLifetime)
         {
             case IClassicDesktopStyleApplicationLifetime desktopLifetime:
@@ -150,6 +169,7 @@ public partial class App : Application
         });
 
         // Application services.
+        services.AddSingleton<LocalizationService>();
         services.AddSingleton<AIProviderService>();
         services.AddSingleton<DocumentService>();
         services.AddSingleton<RecentFoldersService>();

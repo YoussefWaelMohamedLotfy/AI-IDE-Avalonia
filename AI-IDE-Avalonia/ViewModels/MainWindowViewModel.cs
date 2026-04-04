@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.ComponentModel;
 using System.Threading.Tasks;
 using System.Windows.Input;
 using AI_IDE_Avalonia.Models;
@@ -22,6 +23,7 @@ public partial class MainWindowViewModel : ObservableObject
 {
     private readonly IFactory? _factory;
     private readonly ILogger<MainWindowViewModel> _logger;
+    private readonly LocalizationService _loc;
     private IRootDock? _layout;
     private string _globalStatus = "Global: (none)";
     private readonly DictionaryRibbonCommandCatalog _catalogImpl;
@@ -70,9 +72,10 @@ public partial class MainWindowViewModel : ObservableObject
     public AI_IDE_Avalonia.ViewModels.Tools.SolutionExplorerViewModel? SolutionExplorer =>
         (_factory as DockFactory)?.SolutionExplorer;
 
-    public MainWindowViewModel(DocumentService documentService, ILogger<MainWindowViewModel> logger)
+    public MainWindowViewModel(DocumentService documentService, ILogger<MainWindowViewModel> logger, LocalizationService loc)
     {
         _logger = logger;
+        _loc = loc;
         _factory = new DockFactory(new DemoData(), documentService);
 
         DebugFactoryEvents(_factory);
@@ -97,7 +100,7 @@ public partial class MainWindowViewModel : ObservableObject
         SaveDocumentCommand     = new AsyncRelayCommand(() => _saveDocumentFunc?.Invoke()     ?? Task.CompletedTask);
         SaveAllDocumentsCommand = new AsyncRelayCommand(() => _saveAllDocumentsFunc?.Invoke() ?? Task.CompletedTask);
 
-        Ribbon = IdeRibbonFactory.BuildRibbon();
+        Ribbon = IdeRibbonFactory.BuildRibbon(loc);
         _catalogImpl = IdeRibbonFactory.BuildCommandCatalog(id => GlobalStatus = $"Ribbon: {id}");
 
         // Navigation commands
@@ -124,17 +127,40 @@ public partial class MainWindowViewModel : ObservableObject
         _catalogImpl.Register("toggle-theme", new RelayCommand(() => _toggleThemeAction?.Invoke()));
 
         StateStore = new InMemoryRibbonStateStore();
-        QuickAccessItems = IdeRibbonFactory.BuildQuickAccessItems();
+        QuickAccessItems = IdeRibbonFactory.BuildQuickAccessItems(loc);
         BackstageItems = IdeRibbonFactory.BuildBackstageItems(
+            loc,
             newCmd:     new RelayCommand(() => { GlobalStatus = "Ribbon: New File";  IsBackstageOpen = false; }),
             openCmd:    new RelayCommand(() => { GlobalStatus = "Ribbon: Open File"; IsBackstageOpen = false; }),
             saveCmd:    new AsyncRelayCommand(async () => { IsBackstageOpen = false; await (_saveDocumentFunc?.Invoke()     ?? Task.CompletedTask); }),
             saveAllCmd: new AsyncRelayCommand(async () => { IsBackstageOpen = false; await (_saveAllDocumentsFunc?.Invoke() ?? Task.CompletedTask); })
         );
+
+        _loc.PropertyChanged += OnLocalizationChanged;
     }
 
-    internal void WireLayoutIO(Func<Task> open, Func<Task> save, Action close)
+    private void OnLocalizationChanged(object? sender, PropertyChangedEventArgs e)
     {
+        // Refresh ribbon tab/group/item labels in-place.
+        IdeRibbonFactory.RefreshRibbonLabels(Ribbon, _loc);
+
+        // Rebuild Quick Access Toolbar items with new strings.
+        QuickAccessItems.Clear();
+        foreach (var item in IdeRibbonFactory.BuildQuickAccessItems(_loc))
+            QuickAccessItems.Add(item);
+
+        // Rebuild Backstage items with new strings.
+        BackstageItems.Clear();
+        foreach (var item in IdeRibbonFactory.BuildBackstageItems(
+            _loc,
+            newCmd:     new RelayCommand(() => { GlobalStatus = "Ribbon: New File";  IsBackstageOpen = false; }),
+            openCmd:    new RelayCommand(() => { GlobalStatus = "Ribbon: Open File"; IsBackstageOpen = false; }),
+            saveCmd:    new AsyncRelayCommand(async () => { IsBackstageOpen = false; await (_saveDocumentFunc?.Invoke()     ?? Task.CompletedTask); }),
+            saveAllCmd: new AsyncRelayCommand(async () => { IsBackstageOpen = false; await (_saveAllDocumentsFunc?.Invoke() ?? Task.CompletedTask); })))
+            BackstageItems.Add(item);
+    }
+
+    internal void WireLayoutIO(Func<Task> open, Func<Task> save, Action close)    {
         _openLayoutFunc  = open;
         _saveLayoutFunc  = save;
         _closeLayoutFunc = close;

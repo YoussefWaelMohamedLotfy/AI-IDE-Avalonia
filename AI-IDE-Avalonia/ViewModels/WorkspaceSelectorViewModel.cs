@@ -5,7 +5,6 @@ using AI_IDE_Avalonia.Models;
 using AI_IDE_Avalonia.Services;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-
 namespace AI_IDE_Avalonia.ViewModels;
 
 public partial class WorkspaceSelectorViewModel : ViewModelBase, IDisposable
@@ -26,9 +25,13 @@ public partial class WorkspaceSelectorViewModel : ViewModelBase, IDisposable
 
     public bool HasRecentFolders => RecentFolders.Count > 0;
 
-    public WorkspaceSelectorViewModel(RecentFoldersService recentFoldersService)
+    /// <summary>Provides localized strings for the workspace selector window.</summary>
+    public LocalizationService Loc { get; }
+
+    public WorkspaceSelectorViewModel(RecentFoldersService recentFoldersService, LocalizationService loc)
     {
         _service = recentFoldersService;
+        Loc = loc;
         var entries = _service.Load();
         _recentFolders = new ObservableCollection<RecentFolderEntry>(entries);
     }

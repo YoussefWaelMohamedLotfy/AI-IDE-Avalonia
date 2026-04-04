@@ -4,7 +4,7 @@
         xmlns:vm="using:AI_IDE_Avalonia.ViewModels"
         xmlns:models="using:AI_IDE_Avalonia.Models"
         x:DataType="vm:WorkspaceSelectorViewModel"
-        Title="Open Workspace"
+        Title="{Binding Loc.WorkspaceSelectorTitle}"
         Width="640" Height="500"
         WindowStartupLocation="CenterScreen"
         CanResize="False"
@@ -48,11 +48,11 @@
           <Grid ColumnDefinitions="*,Auto">
 
             <StackPanel Grid.Column="0" Spacing="4">
-              <TextBlock Text="Open Workspace"
+              <TextBlock Text="{Binding Loc.WorkspaceSelectorTitle}"
                          FontSize="22"
                          FontWeight="SemiBold"
                          Foreground="White" />
-              <TextBlock Text="Select a recent folder or open a new one on your machine"
+              <TextBlock Text="{Binding Loc.WorkspaceSelectorSubtitle}"
                          FontSize="12"
                          Foreground="#AAAACC" />
             </StackPanel>
@@ -91,7 +91,7 @@
                     Cursor="Hand">
               <StackPanel Orientation="Horizontal" Spacing="12" Margin="4,0">
                 <TextBlock Text="📂" FontSize="18" VerticalAlignment="Center" />
-                <TextBlock Text="Open Folder…"
+                <TextBlock Text="{Binding Loc.OpenFolder}"
                            FontSize="14"
                            Foreground="White"
                            VerticalAlignment="Center" />
@@ -99,7 +99,7 @@
             </Button>
 
             <!-- Recent Folders heading -->
-            <TextBlock Text="RECENT"
+            <TextBlock Text="{Binding Loc.Recent}"
                        FontSize="10"
                        FontWeight="SemiBold"
                        Foreground="#666688"
@@ -108,7 +108,7 @@
                        IsVisible="{Binding HasRecentFolders}" />
 
             <!-- Empty state -->
-            <TextBlock Text="No recent workspaces"
+            <TextBlock Text="{Binding Loc.NoRecentWorkspaces}"
                        FontSize="12"
                        Foreground="#555566"
                        HorizontalAlignment="Center"
@@ -164,7 +164,7 @@
                 BorderBrush="#22FFFFFF"
                 BorderThickness="0,1,0,0">
           <Button Command="{Binding SkipCommand}"
-                  Content="Continue Without Workspace"
+                  Content="{Binding Loc.ContinueWithoutWorkspace}"
                   HorizontalAlignment="Right"
                   Foreground="#888899"
                   Background="Transparent"
