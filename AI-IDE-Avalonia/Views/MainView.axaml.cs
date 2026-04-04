@@ -16,6 +16,7 @@ using AI_IDE_Avalonia.Services;
 using AI_IDE_Avalonia.ViewModels;
 using AI_IDE_Avalonia.ViewModels.Documents;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 
 namespace AI_IDE_Avalonia.Views;
 
@@ -28,6 +29,11 @@ public partial class MainView : UserControl
     private DocumentService? _documentService;
     private DocumentService DocumentSvc =>
         _documentService ??= App.Services.GetRequiredService<DocumentService>();
+
+    // Cached logger resolved once App.Services is ready.
+    private ILogger<MainView>? _logger;
+    private ILogger<MainView> Logger =>
+        _logger ??= App.Services.GetRequiredService<ILogger<MainView>>();
     
     public MainView()
     {
@@ -108,7 +114,7 @@ public partial class MainView : UserControl
             }
             catch (Exception e)
             {
-                Console.WriteLine(e);
+                Logger.LogError(e, "Failed to open layout file '{FileName}'", file.Name);
             }
         }
     }
@@ -148,7 +154,7 @@ public partial class MainView : UserControl
             }
             catch (Exception e)
             {
-                Console.WriteLine(e);
+                Logger.LogError(e, "Failed to save layout file '{FileName}'", file.Name);
             }
         }
     }

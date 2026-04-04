@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
-using System.Diagnostics;
 using System.Threading.Tasks;
 using System.Windows.Input;
 using AI_IDE_Avalonia.Models;
@@ -10,6 +9,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Dock.Model.Controls;
 using Dock.Model.Core;
+using Microsoft.Extensions.Logging;
 using RibbonControl.Core.Contracts;
 using RibbonControl.Core.Enums;
 using RibbonControl.Core.Models;
@@ -21,6 +21,7 @@ namespace AI_IDE_Avalonia.ViewModels;
 public partial class MainWindowViewModel : ObservableObject
 {
     private readonly IFactory? _factory;
+    private readonly ILogger<MainWindowViewModel> _logger;
     private IRootDock? _layout;
     private string _globalStatus = "Global: (none)";
     private readonly DictionaryRibbonCommandCatalog _catalogImpl;
@@ -69,8 +70,9 @@ public partial class MainWindowViewModel : ObservableObject
     public AI_IDE_Avalonia.ViewModels.Tools.SolutionExplorerViewModel? SolutionExplorer =>
         (_factory as DockFactory)?.SolutionExplorer;
 
-    public MainWindowViewModel(DocumentService documentService)
+    public MainWindowViewModel(DocumentService documentService, ILogger<MainWindowViewModel> logger)
     {
+        _logger = logger;
         _factory = new DockFactory(new DemoData(), documentService);
 
         DebugFactoryEvents(_factory);
@@ -214,73 +216,78 @@ public partial class MainWindowViewModel : ObservableObject
     {
         factory.ActiveDockableChanged += (_, args) =>
         {
-            Debug.WriteLine($"[ActiveDockableChanged] Title='{args.Dockable?.Title}', Root='{args.RootDock?.Id}', Window='{args.Window?.Id}'");
+            _logger.LogDebug("[ActiveDockableChanged] Title='{Title}', Root='{RootId}', Window='{WindowId}'",
+                args.Dockable?.Title, args.RootDock?.Id, args.Window?.Id);
         };
 
         factory.FocusedDockableChanged += (_, args) =>
         {
-            Debug.WriteLine($"[FocusedDockableChanged] Title='{args.Dockable?.Title}', Root='{args.RootDock?.Id}', Window='{args.Window?.Id}'");
+            _logger.LogDebug("[FocusedDockableChanged] Title='{Title}', Root='{RootId}', Window='{WindowId}'",
+                args.Dockable?.Title, args.RootDock?.Id, args.Window?.Id);
         };
 
         factory.GlobalDockTrackingChanged += (_, args) =>
         {
             GlobalStatus = FormatGlobalStatus(args.Current);
-            Debug.WriteLine($"[GlobalDockTrackingChanged] Reason='{args.Reason}', Dockable='{args.Current.Dockable?.Title}', Root='{args.Current.RootDock?.Id}', Window='{args.Current.Window?.Id}'");
+            _logger.LogDebug("[GlobalDockTrackingChanged] Reason='{Reason}', Dockable='{Title}', Root='{RootId}', Window='{WindowId}'",
+                args.Reason, args.Current.Dockable?.Title, args.Current.RootDock?.Id, args.Current.Window?.Id);
         };
 
         factory.DockableAdded += (_, args) =>
         {
-            Debug.WriteLine($"[DockableAdded] Title='{args.Dockable?.Title}'");
+            _logger.LogDebug("[DockableAdded] Title='{Title}'", args.Dockable?.Title);
         };
 
         factory.DockableRemoved += (_, args) =>
         {
-            Debug.WriteLine($"[DockableRemoved] Title='{args.Dockable?.Title}'");
+            _logger.LogDebug("[DockableRemoved] Title='{Title}'", args.Dockable?.Title);
         };
 
         factory.DockableClosed += (_, args) =>
         {
-            Debug.WriteLine($"[DockableClosed] Title='{args.Dockable?.Title}'");
+            _logger.LogDebug("[DockableClosed] Title='{Title}'", args.Dockable?.Title);
         };
 
         factory.DockableMoved += (_, args) =>
         {
-            Debug.WriteLine($"[DockableMoved] Title='{args.Dockable?.Title}'");
+            _logger.LogDebug("[DockableMoved] Title='{Title}'", args.Dockable?.Title);
         };
 
         factory.DockableDocked += (_, args) =>
         {
-            Debug.WriteLine($"[DockableDocked] Title='{args.Dockable?.Title}', Operation='{args.Operation}'");
+            _logger.LogDebug("[DockableDocked] Title='{Title}', Operation='{Operation}'",
+                args.Dockable?.Title, args.Operation);
         };
 
         factory.DockableUndocked += (_, args) =>
         {
-            Debug.WriteLine($"[DockableUndocked] Title='{args.Dockable?.Title}', Operation='{args.Operation}'");
+            _logger.LogDebug("[DockableUndocked] Title='{Title}', Operation='{Operation}'",
+                args.Dockable?.Title, args.Operation);
         };
 
         factory.DockableSwapped += (_, args) =>
         {
-            Debug.WriteLine($"[DockableSwapped] Title='{args.Dockable?.Title}'");
+            _logger.LogDebug("[DockableSwapped] Title='{Title}'", args.Dockable?.Title);
         };
 
         factory.DockablePinned += (_, args) =>
         {
-            Debug.WriteLine($"[DockablePinned] Title='{args.Dockable?.Title}'");
+            _logger.LogDebug("[DockablePinned] Title='{Title}'", args.Dockable?.Title);
         };
 
         factory.DockableUnpinned += (_, args) =>
         {
-            Debug.WriteLine($"[DockableUnpinned] Title='{args.Dockable?.Title}'");
+            _logger.LogDebug("[DockableUnpinned] Title='{Title}'", args.Dockable?.Title);
         };
 
         factory.WindowOpened += (_, args) =>
         {
-            Debug.WriteLine($"[WindowOpened] Title='{args.Window?.Title}'");
+            _logger.LogDebug("[WindowOpened] Title='{Title}'", args.Window?.Title);
         };
 
         factory.WindowClosed += (_, args) =>
         {
-            Debug.WriteLine($"[WindowClosed] Title='{args.Window?.Title}'");
+            _logger.LogDebug("[WindowClosed] Title='{Title}'", args.Window?.Title);
         };
 
         factory.WindowClosing += (_, args) =>
@@ -289,17 +296,18 @@ public partial class MainWindowViewModel : ObservableObject
 #if false
                 args.Cancel = true;
 #endif
-            Debug.WriteLine($"[WindowClosing] Title='{args.Window?.Title}', Cancel={args.Cancel}");
+            _logger.LogDebug("[WindowClosing] Title='{Title}', Cancel={Cancel}",
+                args.Window?.Title, args.Cancel);
         };
 
         factory.WindowAdded += (_, args) =>
         {
-            Debug.WriteLine($"[WindowAdded] Title='{args.Window?.Title}'");
+            _logger.LogDebug("[WindowAdded] Title='{Title}'", args.Window?.Title);
         };
 
         factory.WindowRemoved += (_, args) =>
         {
-            Debug.WriteLine($"[WindowRemoved] Title='{args.Window?.Title}'");
+            _logger.LogDebug("[WindowRemoved] Title='{Title}'", args.Window?.Title);
         };
 
         factory.WindowMoveDragBegin += (_, args) =>
@@ -308,37 +316,40 @@ public partial class MainWindowViewModel : ObservableObject
 #if false
                 args.Cancel = true;
 #endif
-            Debug.WriteLine($"[WindowMoveDragBegin] Title='{args.Window?.Title}', Cancel={args.Cancel}, X='{args.Window?.X}', Y='{args.Window?.Y}'");
+            _logger.LogDebug("[WindowMoveDragBegin] Title='{Title}', Cancel={Cancel}, X='{X}', Y='{Y}'",
+                args.Window?.Title, args.Cancel, args.Window?.X, args.Window?.Y);
         };
 
         factory.WindowMoveDrag += (_, args) =>
         {
-            Debug.WriteLine($"[WindowMoveDrag] Title='{args.Window?.Title}', X='{args.Window?.X}', Y='{args.Window?.Y}");
+            _logger.LogDebug("[WindowMoveDrag] Title='{Title}', X='{X}', Y='{Y}'",
+                args.Window?.Title, args.Window?.X, args.Window?.Y);
         };
 
         factory.WindowMoveDragEnd += (_, args) =>
         {
-            Debug.WriteLine($"[WindowMoveDragEnd] Title='{args.Window?.Title}', X='{args.Window?.X}', Y='{args.Window?.Y}");
+            _logger.LogDebug("[WindowMoveDragEnd] Title='{Title}', X='{X}', Y='{Y}'",
+                args.Window?.Title, args.Window?.X, args.Window?.Y);
         };
 
         factory.WindowActivated += (_, args) =>
         {
-            Debug.WriteLine($"[WindowActivated] Title='{args.Window?.Title}'");
+            _logger.LogDebug("[WindowActivated] Title='{Title}'", args.Window?.Title);
         };
 
         factory.DockableActivated += (_, args) =>
         {
-            Debug.WriteLine($"[DockableActivated] Title='{args.Dockable?.Title}'");
+            _logger.LogDebug("[DockableActivated] Title='{Title}'", args.Dockable?.Title);
         };
 
         factory.WindowDeactivated += (_, args) =>
         {
-            Debug.WriteLine($"[WindowDeactivated] Title='{args.Window?.Title}'");
+            _logger.LogDebug("[WindowDeactivated] Title='{Title}'", args.Window?.Title);
         };
 
         factory.DockableDeactivated += (_, args) =>
         {
-            Debug.WriteLine($"[DockableDeactivated] Title='{args.Dockable?.Title}'");
+            _logger.LogDebug("[DockableDeactivated] Title='{Title}'", args.Dockable?.Title);
         };
     }
 
