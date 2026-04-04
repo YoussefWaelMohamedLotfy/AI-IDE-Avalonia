@@ -339,4 +339,82 @@
   <data name="BsSaveAll" xml:space="preserve">
     <value>حفظ جميع الملفات المفتوحة.</value>
   </data>
+
+  <!-- ── Solution Explorer context menu ─────────────────────────────────── -->
+  <data name="CtxOpen" xml:space="preserve">
+    <value>فتح</value>
+  </data>
+  <data name="CtxOpenContainingFolder" xml:space="preserve">
+    <value>فتح المجلد المحتوي</value>
+  </data>
+  <data name="CtxAdd" xml:space="preserve">
+    <value>إضافة</value>
+  </data>
+  <data name="CtxNewFile" xml:space="preserve">
+    <value>ملف جديد...</value>
+  </data>
+  <data name="CtxNewFolder" xml:space="preserve">
+    <value>مجلد جديد...</value>
+  </data>
+  <data name="CtxAddExistingFile" xml:space="preserve">
+    <value>إضافة ملف موجود...</value>
+  </data>
+  <data name="CtxCut" xml:space="preserve">
+    <value>قص</value>
+  </data>
+  <data name="CtxCopy" xml:space="preserve">
+    <value>نسخ</value>
+  </data>
+  <data name="CtxPaste" xml:space="preserve">
+    <value>لصق</value>
+  </data>
+  <data name="CtxRename" xml:space="preserve">
+    <value>إعادة التسمية</value>
+  </data>
+  <data name="CtxDelete" xml:space="preserve">
+    <value>حذف</value>
+  </data>
+  <data name="CtxCopyFullPath" xml:space="preserve">
+    <value>نسخ المسار الكامل</value>
+  </data>
+  <data name="CtxProperties" xml:space="preserve">
+    <value>الخصائص...</value>
+  </data>
+
+  <!-- ── Solution Explorer tool window ──────────────────────────────────── -->
+  <data name="FilterWatermark" xml:space="preserve">
+    <value>تصفية...</value>
+  </data>
+  <data name="ExpandAll" xml:space="preserve">
+    <value>توسيع الكل</value>
+  </data>
+  <data name="CollapseAll" xml:space="preserve">
+    <value>طي الكل</value>
+  </data>
+  <data name="LoadingPlaceholder" xml:space="preserve">
+    <value>جارٍ التحميل...</value>
+  </data>
+  <data name="ItemsCount" xml:space="preserve">
+    <value> عناصر</value>
+  </data>
+  <data name="SelectedCount" xml:space="preserve">
+    <value> محدد</value>
+  </data>
+
+  <!-- ── AI Chat panel ───────────────────────────────────────────────────── -->
+  <data name="ChatSend" xml:space="preserve">
+    <value>إرسال</value>
+  </data>
+  <data name="ChatStop" xml:space="preserve">
+    <value>إيقاف</value>
+  </data>
+  <data name="ChatClear" xml:space="preserve">
+    <value>مسح</value>
+  </data>
+  <data name="ChatProviderLabel" xml:space="preserve">
+    <value>المزود:</value>
+  </data>
+  <data name="ChatToolCall" xml:space="preserve">
+    <value>استدعاء أداة</value>
+  </data>
 </root>

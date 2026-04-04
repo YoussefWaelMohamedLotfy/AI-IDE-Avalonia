@@ -44,6 +44,7 @@ public partial class MainWindowViewModel : ObservableObject
     [ObservableProperty] private string _appTitle = "Avalonia AI IDE";
     [ObservableProperty] private RibbonQuickAccessPlacement _quickAccessPlacement = RibbonQuickAccessPlacement.Below;
     [ObservableProperty] private RibbonStateOwnershipMode _stateOwnershipMode = RibbonStateOwnershipMode.Synchronized;
+    [ObservableProperty] private RibbonViewModel _ribbon = null!;
 
     public IRootDock? Layout
     {
@@ -65,7 +66,6 @@ public partial class MainWindowViewModel : ObservableObject
     /// <summary>Saves all open documents that have a file path.</summary>
     public ICommand SaveAllDocumentsCommand { get; }
 
-    public RibbonViewModel Ribbon { get; }
     public IRibbonCommandCatalog CommandCatalog => _catalogImpl;
     public IRibbonStateStore StateStore { get; }
     public ObservableCollection<RibbonItem> QuickAccessItems { get; }
@@ -106,8 +106,6 @@ public partial class MainWindowViewModel : ObservableObject
 
         Ribbon = IdeRibbonFactory.BuildRibbon(loc);
         _catalogImpl = IdeRibbonFactory.BuildCommandCatalog(id => GlobalStatus = $"Ribbon: {id}");
-
-        // Navigation commands
         _catalogImpl.Register("nav-back",      new RelayCommand(() => Layout?.GoBack?.Execute(null)));
         _catalogImpl.Register("nav-forward",   new RelayCommand(() => Layout?.GoForward?.Execute(null)));
         _catalogImpl.Register("nav-dashboard", new RelayCommand(() => Layout?.Navigate?.Execute("Dashboard")));
@@ -145,19 +143,20 @@ public partial class MainWindowViewModel : ObservableObject
 
     private void OnLocalizationChanged(object? sender, PropertyChangedEventArgs e)
     {
-        // Rebuild tabs from scratch so the ribbon control receives a CollectionChanged
-        // notification and fully re-renders with the new locale strings.
-        // Simply mutating Header/Label on existing ViewModels in-place is unreliable
-        // because the third-party Ribbon control does not guarantee it observes those
-        // per-item PropertyChanged events.
+        // Replace the entire RibbonViewModel so Avalonia's compiled bindings
+        // (Ribbon.Tabs, Ribbon.SelectedTabId, etc.) re-evaluate against the new
+        // instance. This is more reliable than clearing/re-adding Ribbon.Tabs
+        // because the alpha RibbonControl library may not observe CollectionChanged.
         var selectedTabId = Ribbon.SelectedTabId;
-        Ribbon.Tabs.Clear();
-        foreach (var tab in IdeRibbonFactory.BuildRibbon(_loc).Tabs)
-            Ribbon.Tabs.Add(tab);
-        if (selectedTabId is not null)
-            Ribbon.SelectedTabId = selectedTabId;
+        var isMinimized   = Ribbon.IsMinimized;
+        var isKeyTipMode  = Ribbon.IsKeyTipMode;
+        var newRibbon = IdeRibbonFactory.BuildRibbon(_loc);
+        newRibbon.SelectedTabId = selectedTabId;
+        newRibbon.IsMinimized   = isMinimized;
+        newRibbon.IsKeyTipMode  = isKeyTipMode;
+        Ribbon = newRibbon; // raises PropertyChanged("Ribbon") → all nested bindings re-evaluate
 
-        // Re-inject custom content items that were cleared with the tab collection.
+        // Re-inject custom content into the freshly-built tabs.
         IdeRibbonFactory.SetThemeContent(Ribbon, _themeContent);
         IdeRibbonFactory.SetLanguageSelectorContent(Ribbon, _langContent);
 

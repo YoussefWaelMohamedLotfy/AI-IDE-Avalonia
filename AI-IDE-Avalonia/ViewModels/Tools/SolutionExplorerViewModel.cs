@@ -34,6 +34,23 @@ public partial class SolutionExplorerViewModel : Tool, IDisposable
     private ILogger<SolutionExplorerViewModel> Logger =>
         _logger ??= App.Services.GetRequiredService<ILogger<SolutionExplorerViewModel>>();
 
+    // Cached localization service resolved lazily.
+    private LocalizationService? _locService;
+
+    /// <summary>Provides localized strings for the Solution Explorer UI.</summary>
+    public LocalizationService Loc
+    {
+        get
+        {
+            if (_locService is null)
+            {
+                _locService = App.Services.GetRequiredService<LocalizationService>();
+                _locService.PropertyChanged += OnLocalizationChanged;
+            }
+            return _locService;
+        }
+    }
+
     [ObservableProperty]
     private string _filterText = string.Empty;
 
@@ -41,6 +58,12 @@ public partial class SolutionExplorerViewModel : Tool, IDisposable
     private int _totalNodeCount;
 
     public int SelectedNodeCount => SelectedNodes.Count;
+
+    /// <summary>Localized status text showing total visible node count.</summary>
+    public string ItemsSummary => $"{TotalNodeCount}{Loc.ItemsCount}";
+
+    /// <summary>Localized status text showing selected node count.</summary>
+    public string SelectedSummary => $"{SelectedNodeCount}{Loc.SelectedCount}";
 
     /// <summary>True when more than one node is selected; drives the selected-count label visibility.</summary>
     public bool HasMultipleSelected => SelectedNodes.Count > 1;
@@ -57,6 +80,7 @@ public partial class SolutionExplorerViewModel : Tool, IDisposable
         SelectedNodes.CollectionChanged += (_, _) =>
         {
             OnPropertyChanged(nameof(SelectedNodeCount));
+            OnPropertyChanged(nameof(SelectedSummary));
             OnPropertyChanged(nameof(HasMultipleSelected));
         };
 
@@ -77,6 +101,14 @@ public partial class SolutionExplorerViewModel : Tool, IDisposable
     private static readonly TimeSpan FilterDebounce = TimeSpan.FromMilliseconds(300);
 
     partial void OnFilterTextChanged(string value) => ScheduleFilter(debounce: true);
+
+    partial void OnTotalNodeCountChanged(int value) => OnPropertyChanged(nameof(ItemsSummary));
+
+    private void OnLocalizationChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+    {
+        OnPropertyChanged(nameof(ItemsSummary));
+        OnPropertyChanged(nameof(SelectedSummary));
+    }
 
     // Kept so existing internal callers (workspace load, node add/delete) don't need changing.
     private void ApplyFilter() => ScheduleFilter(debounce: false);
@@ -614,6 +646,8 @@ public partial class SolutionExplorerViewModel : Tool, IDisposable
 
     public void Dispose()
     {
+        if (_locService is not null)
+            _locService.PropertyChanged -= OnLocalizationChanged;
         _fsCreatedSub?.Dispose();
         _fsDeletedSub?.Dispose();
         _fsRenamedSub?.Dispose();

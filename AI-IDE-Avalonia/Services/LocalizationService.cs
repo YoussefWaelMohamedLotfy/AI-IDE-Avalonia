@@ -48,4 +48,37 @@ public sealed class LocalizationService : ObservableObject
     public string Recent                       => this[nameof(Recent)];
     public string NoRecentWorkspaces           => this[nameof(NoRecentWorkspaces)];
     public string ContinueWithoutWorkspace     => this[nameof(ContinueWithoutWorkspace)];
+
+    // ── Solution Explorer context menu ─────────────────────────────────────
+
+    public string CtxOpen                 => this[nameof(CtxOpen)];
+    public string CtxOpenContainingFolder => this[nameof(CtxOpenContainingFolder)];
+    public string CtxAdd                  => this[nameof(CtxAdd)];
+    public string CtxNewFile              => this[nameof(CtxNewFile)];
+    public string CtxNewFolder            => this[nameof(CtxNewFolder)];
+    public string CtxAddExistingFile      => this[nameof(CtxAddExistingFile)];
+    public string CtxCut                  => this[nameof(CtxCut)];
+    public string CtxCopy                 => this[nameof(CtxCopy)];
+    public string CtxPaste                => this[nameof(CtxPaste)];
+    public string CtxRename               => this[nameof(CtxRename)];
+    public string CtxDelete               => this[nameof(CtxDelete)];
+    public string CtxCopyFullPath         => this[nameof(CtxCopyFullPath)];
+    public string CtxProperties           => this[nameof(CtxProperties)];
+
+    // ── Solution Explorer tool window ──────────────────────────────────────
+
+    public string FilterWatermark     => this[nameof(FilterWatermark)];
+    public string ExpandAll           => this[nameof(ExpandAll)];
+    public string CollapseAll         => this[nameof(CollapseAll)];
+    public string LoadingPlaceholder  => this[nameof(LoadingPlaceholder)];
+    public string ItemsCount          => this[nameof(ItemsCount)];
+    public string SelectedCount       => this[nameof(SelectedCount)];
+
+    // ── AI Chat panel ──────────────────────────────────────────────────────
+
+    public string ChatSend          => this[nameof(ChatSend)];
+    public string ChatStop          => this[nameof(ChatStop)];
+    public string ChatClear         => this[nameof(ChatClear)];
+    public string ChatProviderLabel => this[nameof(ChatProviderLabel)];
+    public string ChatToolCall      => this[nameof(ChatToolCall)];
 }

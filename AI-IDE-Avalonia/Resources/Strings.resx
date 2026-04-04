@@ -339,4 +339,82 @@
   <data name="BsSaveAll" xml:space="preserve">
     <value>Save all open files.</value>
   </data>
+
+  <!-- ── Solution Explorer context menu ─────────────────────────────────── -->
+  <data name="CtxOpen" xml:space="preserve">
+    <value>Open</value>
+  </data>
+  <data name="CtxOpenContainingFolder" xml:space="preserve">
+    <value>Open Containing Folder</value>
+  </data>
+  <data name="CtxAdd" xml:space="preserve">
+    <value>Add</value>
+  </data>
+  <data name="CtxNewFile" xml:space="preserve">
+    <value>New File...</value>
+  </data>
+  <data name="CtxNewFolder" xml:space="preserve">
+    <value>New Folder...</value>
+  </data>
+  <data name="CtxAddExistingFile" xml:space="preserve">
+    <value>Add Existing File...</value>
+  </data>
+  <data name="CtxCut" xml:space="preserve">
+    <value>Cut</value>
+  </data>
+  <data name="CtxCopy" xml:space="preserve">
+    <value>Copy</value>
+  </data>
+  <data name="CtxPaste" xml:space="preserve">
+    <value>Paste</value>
+  </data>
+  <data name="CtxRename" xml:space="preserve">
+    <value>Rename</value>
+  </data>
+  <data name="CtxDelete" xml:space="preserve">
+    <value>Delete</value>
+  </data>
+  <data name="CtxCopyFullPath" xml:space="preserve">
+    <value>Copy Full Path</value>
+  </data>
+  <data name="CtxProperties" xml:space="preserve">
+    <value>Properties...</value>
+  </data>
+
+  <!-- ── Solution Explorer tool window ──────────────────────────────────── -->
+  <data name="FilterWatermark" xml:space="preserve">
+    <value>Filter...</value>
+  </data>
+  <data name="ExpandAll" xml:space="preserve">
+    <value>Expand All</value>
+  </data>
+  <data name="CollapseAll" xml:space="preserve">
+    <value>Collapse All</value>
+  </data>
+  <data name="LoadingPlaceholder" xml:space="preserve">
+    <value>Loading…</value>
+  </data>
+  <data name="ItemsCount" xml:space="preserve">
+    <value> items</value>
+  </data>
+  <data name="SelectedCount" xml:space="preserve">
+    <value> selected</value>
+  </data>
+
+  <!-- ── AI Chat panel ───────────────────────────────────────────────────── -->
+  <data name="ChatSend" xml:space="preserve">
+    <value>Send</value>
+  </data>
+  <data name="ChatStop" xml:space="preserve">
+    <value>Stop</value>
+  </data>
+  <data name="ChatClear" xml:space="preserve">
+    <value>Clear</value>
+  </data>
+  <data name="ChatProviderLabel" xml:space="preserve">
+    <value>Provider:</value>
+  </data>
+  <data name="ChatToolCall" xml:space="preserve">
+    <value>tool call</value>
+  </data>
 </root>
