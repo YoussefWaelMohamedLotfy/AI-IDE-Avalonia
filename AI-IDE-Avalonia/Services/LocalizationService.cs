@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Resources;
+using Avalonia.Media;
 using CommunityToolkit.Mvvm.ComponentModel;
 
 namespace AI_IDE_Avalonia.Services;
@@ -21,6 +22,16 @@ public sealed class LocalizationService : ObservableObject
 
     /// <summary>The culture currently in use for string look-ups.</summary>
     public CultureInfo CurrentCulture => _currentCulture;
+
+    /// <summary>
+    /// Returns <see cref="FlowDirection.RightToLeft"/> for RTL cultures (e.g. Arabic, Hebrew)
+    /// and <see cref="FlowDirection.LeftToRight"/> for all others.
+    /// Bind this to the root <c>Window.FlowDirection</c> so the entire UI mirrors automatically.
+    /// </summary>
+    public FlowDirection FlowDirection =>
+        _currentCulture.TextInfo.IsRightToLeft
+            ? FlowDirection.RightToLeft
+            : FlowDirection.LeftToRight;
 
     /// <summary>
     /// Switches the active culture and notifies all bound properties.

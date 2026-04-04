@@ -18,6 +18,7 @@
         FontFamily="Segoe UI, SF Pro Display, Noto Sans, Cantarel"
         Title="{Binding AppTitle}" Height="680" Width="1200"
         Icon="avares://AI-IDE-Avalonia/Assets/app-icon.ico"
+        FlowDirection="{Binding FlowDirection}"
         ExtendClientAreaToDecorationsHint="True"
         ExtendClientAreaChromeHints="PreferSystemChrome">
   <Window.Resources>

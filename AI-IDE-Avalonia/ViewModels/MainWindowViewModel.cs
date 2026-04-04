@@ -4,6 +4,7 @@ using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Threading.Tasks;
 using System.Windows.Input;
+using Avalonia.Media;
 using AI_IDE_Avalonia.Models;
 using AI_IDE_Avalonia.Services;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -65,6 +66,13 @@ public partial class MainWindowViewModel : ObservableObject
 
     /// <summary>Saves all open documents that have a file path.</summary>
     public ICommand SaveAllDocumentsCommand { get; }
+
+    /// <summary>
+    /// The current layout direction derived from the active locale.
+    /// Binding this to <c>Window.FlowDirection</c> (and/or the root UserControl) automatically
+    /// mirrors every child — documents, tools, ribbon — for RTL languages such as Arabic.
+    /// </summary>
+    public FlowDirection FlowDirection => _loc.FlowDirection;
 
     public IRibbonCommandCatalog CommandCatalog => _catalogImpl;
     public IRibbonStateStore StateStore { get; }
@@ -143,6 +151,9 @@ public partial class MainWindowViewModel : ObservableObject
 
     private void OnLocalizationChanged(object? sender, PropertyChangedEventArgs e)
     {
+        // Notify the FlowDirection binding so the window mirrors for RTL languages.
+        OnPropertyChanged(nameof(FlowDirection));
+
         // Replace the entire RibbonViewModel so Avalonia's compiled bindings
         // (Ribbon.Tabs, Ribbon.SelectedTabId, etc.) re-evaluate against the new
         // instance. This is more reliable than clearing/re-adding Ribbon.Tabs

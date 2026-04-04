@@ -11,7 +11,8 @@
         ShowInTaskbar="True"
         SystemDecorations="None"
         TransparencyLevelHint="AcrylicBlur"
-        Background="{x:Null}">
+        Background="{x:Null}"
+        FlowDirection="{Binding Loc.FlowDirection}">
 
   <Design.DataContext>
     <vm:WorkspaceSelectorViewModel />
