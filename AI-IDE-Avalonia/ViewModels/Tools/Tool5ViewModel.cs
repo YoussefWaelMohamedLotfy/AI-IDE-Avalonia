@@ -15,6 +15,7 @@ using Dock.Model.Mvvm.Controls;
 using GitHub.Copilot.SDK;
 using Microsoft.Agents.AI;
 using Microsoft.Agents.AI.GitHub.Copilot;
+using Microsoft.Extensions.DependencyInjection;
 using OllamaSharp;
 using Ai = Microsoft.Extensions.AI;
 using AiChatMessage = Microsoft.Extensions.AI.ChatMessage;
@@ -85,8 +86,19 @@ public partial class Tool5ViewModel : Tool, IAsyncDisposable
     {
         _ollamaClient = new OllamaApiClient(new Uri(OllamaEndpoint), ModelName);
         _chatHistory.Add(new AiChatMessage(AiChatRole.System, SystemInstructions));
-        AIProviderService.Instance.ProviderChanged += OnProviderChanged;
+        ProviderService.ProviderChanged += OnProviderChanged;
     }
+
+    // Singleton services resolved once and cached. Lazy to avoid accessing App.Services
+    // before it is initialized (e.g. during design-time preview).
+    private AIProviderService? _providerService;
+    private DocumentService? _documentService;
+
+    private AIProviderService ProviderService =>
+        _providerService ??= App.Services.GetRequiredService<AIProviderService>();
+
+    private DocumentService DocumentSvc =>
+        _documentService ??= App.Services.GetRequiredService<DocumentService>();
 
     private void OnProviderChanged(object? sender, EventArgs e) =>
         _ = HandleProviderChangedAsync();
@@ -101,19 +113,19 @@ public partial class Tool5ViewModel : Tool, IAsyncDisposable
     }
 
     [ObservableProperty]
-    private string _selectedProvider = AIProviderService.Instance.SelectedProvider;
+    private string _selectedProvider = AIProviderService.AvailableProviders[0];
 
     public IReadOnlyList<string> AvailableProviders { get; } = AIProviderService.AvailableProviders;
 
     partial void OnSelectedProviderChanged(string value)
     {
-        if (AIProviderService.Instance.SelectedProvider != value)
-            AIProviderService.Instance.SelectedProvider = value;
+        if (ProviderService.SelectedProvider != value)
+            ProviderService.SelectedProvider = value;
     }
 
     private void UpdateProviderLabels()
     {
-        var provider = AIProviderService.Instance.SelectedProvider;
+        var provider = ProviderService.SelectedProvider;
 
         // Keep the combo in sync if the service was changed from outside.
         if (SelectedProvider != provider)
@@ -217,7 +229,7 @@ public partial class Tool5ViewModel : Tool, IAsyncDisposable
 
         try
         {
-            if (AIProviderService.Instance.SelectedProvider == "Github Copilot")
+            if (ProviderService.SelectedProvider == "Github Copilot")
                 await SendWithGitHubCopilotAsync(userText, ct);
             else
                 await SendWithOllamaAsync(userText, ct);
@@ -446,7 +458,7 @@ public partial class Tool5ViewModel : Tool, IAsyncDisposable
         });
     }
 
-    private static List<Ai.AITool> BuildTools()
+    private List<Ai.AITool> BuildTools()
     {
         var solutionExplorer = SharedSolutionExplorer;
         var tools = new List<Ai.AITool>();
@@ -478,7 +490,7 @@ public partial class Tool5ViewModel : Tool, IAsyncDisposable
             {
                 return await Dispatcher.UIThread.InvokeAsync(() =>
                 {
-                    var doc = DocumentService.Instance.GetOrCreateDocument(title);
+                    var doc = DocumentSvc.GetOrCreateDocument(title);
                     if (title is not null)
                         doc.Title = title;
                     doc.DocumentText = UnescapeText(text);
@@ -573,7 +585,7 @@ public partial class Tool5ViewModel : Tool, IAsyncDisposable
     public async ValueTask DisposeAsync()
     {
         GC.SuppressFinalize(this);
-        AIProviderService.Instance.ProviderChanged -= OnProviderChanged;
+        ProviderService.ProviderChanged -= OnProviderChanged;
         await DisposeGitHubCopilotAsync();
         if (_ollamaClient is IAsyncDisposable asyncDisposable)
             await asyncDisposable.DisposeAsync();

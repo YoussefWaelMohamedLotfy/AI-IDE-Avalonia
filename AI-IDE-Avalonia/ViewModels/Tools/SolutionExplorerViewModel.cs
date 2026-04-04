@@ -14,6 +14,8 @@ using AI_IDE_Avalonia.Services;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Dock.Model.Mvvm.Controls;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 
 namespace AI_IDE_Avalonia.ViewModels.Tools;
 
@@ -21,6 +23,16 @@ public partial class SolutionExplorerViewModel : Tool, IDisposable
 {
     // Root nodes (one per open workspace root).
     private readonly ObservableCollection<TreeNode> _allNodes = TreeNode.CreateSampleProject();
+
+    // Cached singleton resolved lazily to avoid accessing App.Services before it is ready.
+    private DocumentService? _documentService;
+    private DocumentService DocumentSvc =>
+        _documentService ??= App.Services.GetRequiredService<DocumentService>();
+
+    // Cached logger resolved lazily to avoid accessing App.Services before it is ready.
+    private ILogger<SolutionExplorerViewModel>? _logger;
+    private ILogger<SolutionExplorerViewModel> Logger =>
+        _logger ??= App.Services.GetRequiredService<ILogger<SolutionExplorerViewModel>>();
 
     [ObservableProperty]
     private string _filterText = string.Empty;
@@ -315,12 +327,11 @@ public partial class SolutionExplorerViewModel : Tool, IDisposable
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine(
-                $"[SolutionExplorer] Could not start watcher for '{rootPath}': {ex.Message}");
+            Logger.LogWarning(ex, "Could not start watcher for '{RootPath}'", rootPath);
         }
 
         // Also tell DocumentService so newly-opened documents can track their files.
-        DocumentService.Instance.SetWorkspaceWatcher(rootPath);
+        DocumentSvc.SetWorkspaceWatcher(rootPath);
 
         if (_fsWatcher is null) return;
 
@@ -507,8 +518,7 @@ public partial class SolutionExplorerViewModel : Tool, IDisposable
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
-            System.Diagnostics.Debug.WriteLine(
-                $"[SolutionExplorer] RefreshDirectory failed for '{dirFullPath}': {ex.Message}");
+            Logger.LogWarning(ex, "RefreshDirectory failed for '{DirFullPath}'", dirFullPath);
             return;
         }
 
@@ -767,8 +777,7 @@ public partial class SolutionExplorerViewModel : Tool, IDisposable
         catch (Exception ex)
         {
             // Unexpected errors — log for diagnostics, then reset.
-            System.Diagnostics.Debug.WriteLine(
-                $"[SolutionExplorer] Unexpected error loading '{node.FullPath}': {ex}");
+            Logger.LogError(ex, "Unexpected error loading '{NodeFullPath}'", node.FullPath);
             node.ChildrenLoaded = false;
             node.Children?.Clear();
             node.Children?.Add(TreeNode.LoadingPlaceholder);
@@ -955,7 +964,7 @@ public partial class SolutionExplorerViewModel : Tool, IDisposable
         if (node is null || node.IsLoadingPlaceholder) return;
         if (node.IsFolder) { node.IsExpanded = !node.IsExpanded; return; }
 
-        DocumentService.Instance.OpenDocument(node.Name, node.FullPath);
+        DocumentSvc.OpenDocument(node.Name, node.FullPath);
     }
 
     [RelayCommand]
@@ -972,7 +981,7 @@ public partial class SolutionExplorerViewModel : Tool, IDisposable
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"[SolutionExplorer] OpenContainingFolder: {ex.Message}");
+            Logger.LogWarning(ex, "OpenContainingFolder failed for path '{Path}'", path);
         }
     }
 
@@ -1014,7 +1023,7 @@ public partial class SolutionExplorerViewModel : Tool, IDisposable
     {
         if (node is null || !node.IsFolder) return;
         // TODO: open StorageProvider file picker
-        System.Diagnostics.Debug.WriteLine($"[SolutionExplorer] AddExistingFile to: {node.FullPath}");
+        Logger.LogDebug("AddExistingFile invoked for folder '{FolderPath}'", node.FullPath);
     }
 
     [RelayCommand]
@@ -1054,7 +1063,7 @@ public partial class SolutionExplorerViewModel : Tool, IDisposable
     private void RenameNode(TreeNode? node)
     {
         // TODO: trigger inline rename
-        System.Diagnostics.Debug.WriteLine($"[SolutionExplorer] Rename: {node?.Name}");
+        Logger.LogDebug("RenameNode invoked for '{NodeName}'", node?.Name);
     }
 
     [RelayCommand]
@@ -1069,7 +1078,7 @@ public partial class SolutionExplorerViewModel : Tool, IDisposable
     private void ShowProperties(TreeNode? node)
     {
         // TODO: show properties panel
-        System.Diagnostics.Debug.WriteLine($"[SolutionExplorer] Properties: {node?.FullPath ?? node?.Name}");
+        Logger.LogDebug("ShowProperties invoked for '{NodePath}'", node?.FullPath ?? node?.Name);
     }
 
     private static bool RemoveNodeFromTree(TreeNode target, IList<TreeNode> nodes)

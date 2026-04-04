@@ -9,6 +9,8 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Dock.Model.CommandBars;
 using Dock.Model.Mvvm.Controls;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 
 namespace AI_IDE_Avalonia.ViewModels.Documents;
 
@@ -20,6 +22,11 @@ public partial class DocumentViewModel : Document, IDockCommandBarProvider, IAsy
 
     // The clean tab title (without the '*' dirty indicator).
     private string _baseTitle = string.Empty;
+
+    // Cached logger resolved lazily to avoid accessing App.Services before it is ready.
+    private ILogger<DocumentViewModel>? _logger;
+    private ILogger<DocumentViewModel> Logger =>
+        _logger ??= App.Services.GetRequiredService<ILogger<DocumentViewModel>>();
 
     // ── External-change watching ──────────────────────────────────────────────
 
@@ -117,8 +124,7 @@ public partial class DocumentViewModel : Document, IDockCommandBarProvider, IAsy
         catch (Exception ex)
         {
             _suppressNextExternalChange = false;
-            System.Diagnostics.Debug.WriteLine(
-                $"[DocumentViewModel] Could not write '{FilePath}': {ex.Message}");
+            Logger.LogError(ex, "Could not write '{FilePath}'", FilePath);
             return false;
         }
     }
@@ -159,8 +165,7 @@ public partial class DocumentViewModel : Document, IDockCommandBarProvider, IAsy
                 }
                 catch (Exception ex)
                 {
-                    System.Diagnostics.Debug.WriteLine(
-                        $"[DocumentViewModel] Could not reload '{FilePath}': {ex.Message}");
+                    Logger.LogWarning(ex, "Could not reload '{FilePath}'", FilePath);
                 }
             });
 

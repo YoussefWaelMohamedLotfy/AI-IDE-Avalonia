@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using AI_IDE_Avalonia.ViewModels.Documents;
 using Dock.Model.Controls;
+using Microsoft.Extensions.Logging;
 
 namespace AI_IDE_Avalonia.Services;
 
@@ -13,9 +14,12 @@ namespace AI_IDE_Avalonia.Services;
 /// </summary>
 public sealed class DocumentService
 {
-    public static readonly DocumentService Instance = new();
+    private readonly ILogger<DocumentService> _logger;
 
-    private DocumentService() { }
+    public DocumentService(ILogger<DocumentService> logger)
+    {
+        _logger = logger;
+    }
 
     internal IDocumentDock? DocumentDock { get; set; }
 
@@ -41,8 +45,7 @@ public sealed class DocumentService
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine(
-                $"[DocumentService] Could not start workspace watcher for '{rootPath}': {ex.Message}");
+            _logger.LogWarning(ex, "Could not start workspace watcher for '{RootPath}'", rootPath);
         }
     }
 
@@ -143,8 +146,7 @@ public sealed class DocumentService
             try { doc.DocumentText = File.ReadAllText(filePath); }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine(
-                    $"[DocumentService] Could not read '{filePath}': {ex.Message}");
+                _logger.LogWarning(ex, "Could not read '{FilePath}'", filePath);
             }
         }
 

@@ -12,7 +12,13 @@ using Dock.Avalonia.Themes;
 using Dock.Avalonia.Themes.Fluent;
 using AI_IDE_Avalonia.ViewModels;
 using AI_IDE_Avalonia.Views;
+using AI_IDE_Avalonia.Services;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
+using Serilog;
 using System;
+using System.IO;
 using System.Threading.Tasks;
 using System.Threading;
 
@@ -21,6 +27,12 @@ namespace AI_IDE_Avalonia;
 public partial class App : Application
 {
     public static IDockThemeManager? ThemeManager;
+
+    /// <summary>
+    /// The application-wide dependency injection container.
+    /// Available after <see cref="OnFrameworkInitializationCompleted"/> begins.
+    /// </summary>
+    public static IServiceProvider Services { get; private set; } = null!;
 
     public override void Initialize()
     {
@@ -34,9 +46,14 @@ public partial class App : Application
 
     public override void OnFrameworkInitializationCompleted()
     {
+        // Build the DI container before anything else.
+        var serviceCollection = new ServiceCollection();
+        ConfigureServices(serviceCollection);
+        Services = serviceCollection.BuildServiceProvider();
+
         // DockManager.s_enableSplitToWindow = true;
 
-        var mainWindowViewModel = new MainWindowViewModel();
+        var mainWindowViewModel = Services.GetRequiredService<MainWindowViewModel>();
 
         // Inject the theme preset ComboBox into the ribbon BEFORE setting DataContext.
         // RebuildTabs() fires when the TabsSource binding resolves (on DataContext assignment),
@@ -50,9 +67,9 @@ public partial class App : Application
                 FontSize = 11,
                 Padding = new Thickness(6, 2),
                 VerticalAlignment = VerticalAlignment.Center,
+                ItemsSource = themeManager.PresetNames,
+                SelectedIndex = themeManager.CurrentPresetIndex
             };
-            comboBox.ItemsSource = themeManager.PresetNames;
-            comboBox.SelectedIndex = themeManager.CurrentPresetIndex;
             comboBox.SelectionChanged += (_, _) =>
             {
                 if (comboBox.SelectedIndex >= 0)
@@ -73,6 +90,20 @@ public partial class App : Application
 
                 desktopLifetime.MainWindow = splashWindow;
                 splashWindow.Show();
+
+                // Flush logging on exit.
+                desktopLifetime.Exit += (_, _) =>
+                {
+                    try
+                    {
+                        if (Services is IDisposable disposable)
+                            disposable.Dispose();
+                    }
+                    catch
+                    {
+                        // Best effort — prevent shutdown from failing.
+                    }
+                };
 
                 // Run background start-up work, then swap to the main window.
                 _ = RunStartupAndOpenMainWindowAsync(
@@ -95,6 +126,37 @@ public partial class App : Application
 #if DEBUG
         this.AttachDevTools();
 #endif
+    }
+
+    private static void ConfigureServices(IServiceCollection services)
+    {
+        // Configuration — built from appsettings.json next to the executable.
+        var configuration = new ConfigurationBuilder()
+            .SetBasePath(AppContext.BaseDirectory)
+            .AddJsonFile("appsettings.json", optional: true, reloadOnChange: true)
+            .Build();
+        services.AddSingleton<IConfiguration>(configuration);
+
+        // Logging — Serilog reads its config from the "Serilog" section.
+        var serilogLogger = new LoggerConfiguration()
+            .ReadFrom.Configuration(configuration)
+            .CreateLogger();
+        Log.Logger = serilogLogger;
+
+        services.AddLogging(builder =>
+        {
+            builder.ClearProviders();
+            builder.AddSerilog(serilogLogger, dispose: true);
+        });
+
+        // Application services.
+        services.AddSingleton<AIProviderService>();
+        services.AddSingleton<DocumentService>();
+        services.AddSingleton<RecentFoldersService>();
+
+        // ViewModels.
+        services.AddTransient<MainWindowViewModel>();
+        services.AddTransient<WorkspaceSelectorViewModel>();
     }
 
     private static async Task RunStartupAndOpenMainWindowAsync(
@@ -122,11 +184,12 @@ public partial class App : Application
         catch (Exception ex)
         {
             // Unexpected failure during startup — log and still open the main window.
-            System.Diagnostics.Trace.TraceError($"Splash startup error: {ex}");
+            Services.GetRequiredService<ILogger<App>>()
+                .LogError(ex, "Splash startup error");
         }
 
         // Swap the splash for the workspace-selector window.
-        var workspaceViewModel = new WorkspaceSelectorViewModel();
+        var workspaceViewModel = Services.GetRequiredService<WorkspaceSelectorViewModel>();
         WorkspaceSelectorWindow? workspaceWindow = null;
 
         await Dispatcher.UIThread.InvokeAsync(() =>
