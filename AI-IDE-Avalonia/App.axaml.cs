@@ -80,7 +80,7 @@ public partial class App : Application
 
         // Inject the language selector ComboBox into the ribbon BEFORE setting DataContext.
         var locService = Services.GetRequiredService<LocalizationService>();
-        var langOptions = new[] { "English", "العربية" };
+        var langOptions = new[] { "English", "العربية", "Français", "Deutsch", "Español", "Polski" };
         var langComboBox = new ComboBox
         {
             Width = 120,
@@ -93,7 +93,16 @@ public partial class App : Application
         };
         langComboBox.SelectionChanged += (_, _) =>
         {
-            locService.SetCulture(langComboBox.SelectedIndex == 1 ? "ar" : "en");
+            var culture = langComboBox.SelectedIndex switch
+            {
+                1 => "ar",
+                2 => "fr",
+                3 => "de",
+                4 => "es",
+                5 => "pl",
+                _ => "en",
+            };
+            locService.SetCulture(culture);
         };
         mainWindowViewModel.WireLangContent(langComboBox);
 
