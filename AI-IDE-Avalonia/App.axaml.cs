@@ -75,7 +75,7 @@ public partial class App : Application
                 if (comboBox.SelectedIndex >= 0)
                     themeManager.SwitchPreset(comboBox.SelectedIndex);
             };
-            IdeRibbonFactory.SetThemeContent(mainWindowViewModel.Ribbon, comboBox);
+            mainWindowViewModel.WireThemeContent(comboBox);
         }
 
         // Inject the language selector ComboBox into the ribbon BEFORE setting DataContext.
@@ -95,7 +95,7 @@ public partial class App : Application
         {
             locService.SetCulture(langComboBox.SelectedIndex == 1 ? "ar" : "en");
         };
-        IdeRibbonFactory.SetLanguageSelectorContent(mainWindowViewModel.Ribbon, langComboBox);
+        mainWindowViewModel.WireLangContent(langComboBox);
 
         switch (ApplicationLifetime)
         {

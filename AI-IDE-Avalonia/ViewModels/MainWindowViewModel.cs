@@ -28,6 +28,10 @@ public partial class MainWindowViewModel : ObservableObject
     private string _globalStatus = "Global: (none)";
     private readonly DictionaryRibbonCommandCatalog _catalogImpl;
 
+    // Custom ribbon item contents preserved across tab rebuilds.
+    private object? _themeContent;
+    private object? _langContent;
+
     // Delegates set lazily by the view once it has a visual root (required for file dialogs / theme).
     private Func<Task>? _openLayoutFunc;
     private Func<Task>? _saveLayoutFunc;
@@ -141,8 +145,21 @@ public partial class MainWindowViewModel : ObservableObject
 
     private void OnLocalizationChanged(object? sender, PropertyChangedEventArgs e)
     {
-        // Refresh ribbon tab/group/item labels in-place.
-        IdeRibbonFactory.RefreshRibbonLabels(Ribbon, _loc);
+        // Rebuild tabs from scratch so the ribbon control receives a CollectionChanged
+        // notification and fully re-renders with the new locale strings.
+        // Simply mutating Header/Label on existing ViewModels in-place is unreliable
+        // because the third-party Ribbon control does not guarantee it observes those
+        // per-item PropertyChanged events.
+        var selectedTabId = Ribbon.SelectedTabId;
+        Ribbon.Tabs.Clear();
+        foreach (var tab in IdeRibbonFactory.BuildRibbon(_loc).Tabs)
+            Ribbon.Tabs.Add(tab);
+        if (selectedTabId is not null)
+            Ribbon.SelectedTabId = selectedTabId;
+
+        // Re-inject custom content items that were cleared with the tab collection.
+        IdeRibbonFactory.SetThemeContent(Ribbon, _themeContent);
+        IdeRibbonFactory.SetLanguageSelectorContent(Ribbon, _langContent);
 
         // Rebuild Quick Access Toolbar items with new strings.
         QuickAccessItems.Clear();
@@ -173,6 +190,26 @@ public partial class MainWindowViewModel : ObservableObject
     }
 
     internal void WireToggleTheme(Action toggleTheme) => _toggleThemeAction = toggleTheme;
+
+    /// <summary>
+    /// Stores the theme-preset ComboBox and injects it into the ribbon's View → Themes group.
+    /// Also re-injects after every language rebuild so the content is never lost.
+    /// </summary>
+    internal void WireThemeContent(object? content)
+    {
+        _themeContent = content;
+        IdeRibbonFactory.SetThemeContent(Ribbon, content);
+    }
+
+    /// <summary>
+    /// Stores the language-selector ComboBox and injects it into the ribbon's Home → Language group.
+    /// Also re-injects after every language rebuild so the content is never lost.
+    /// </summary>
+    internal void WireLangContent(object? content)
+    {
+        _langContent = content;
+        IdeRibbonFactory.SetLanguageSelectorContent(Ribbon, content);
+    }
 
     /// <summary>
     /// Loads the filesystem tree for <paramref name="folderPath"/> into the Solution Explorer
