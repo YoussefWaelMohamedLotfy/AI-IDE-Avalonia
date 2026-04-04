@@ -67,9 +67,9 @@ public partial class App : Application
                 FontSize = 11,
                 Padding = new Thickness(6, 2),
                 VerticalAlignment = VerticalAlignment.Center,
+                ItemsSource = themeManager.PresetNames,
+                SelectedIndex = themeManager.CurrentPresetIndex
             };
-            comboBox.ItemsSource = themeManager.PresetNames;
-            comboBox.SelectedIndex = themeManager.CurrentPresetIndex;
             comboBox.SelectionChanged += (_, _) =>
             {
                 if (comboBox.SelectedIndex >= 0)
@@ -133,16 +133,15 @@ public partial class App : Application
         // Configuration — built from appsettings.json next to the executable.
         var configuration = new ConfigurationBuilder()
             .SetBasePath(AppContext.BaseDirectory)
-            .AddJsonFile("appsettings.json", optional: true, reloadOnChange: false)
+            .AddJsonFile("appsettings.json", optional: true, reloadOnChange: true)
             .Build();
         services.AddSingleton<IConfiguration>(configuration);
 
         // Logging — Serilog reads its config from the "Serilog" section.
         var serilogLogger = new LoggerConfiguration()
             .ReadFrom.Configuration(configuration)
-            .Enrich.FromLogContext()
             .CreateLogger();
-        Serilog.Log.Logger = serilogLogger;
+        Log.Logger = serilogLogger;
 
         services.AddLogging(builder =>
         {
