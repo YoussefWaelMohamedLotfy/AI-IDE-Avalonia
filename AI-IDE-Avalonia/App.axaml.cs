@@ -4,6 +4,7 @@ using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Input;
 using Avalonia.Layout;
 using Avalonia.Markup.Xaml;
+using Avalonia.Styling;
 using Avalonia.Threading;
 using Dock.Avalonia.Controls;
 using Dock.Avalonia.Diagnostics.Controls;
@@ -72,8 +73,14 @@ public partial class App : Application
             };
             comboBox.SelectionChanged += (_, _) =>
             {
-                if (comboBox.SelectedIndex >= 0)
-                    themeManager.SwitchPreset(comboBox.SelectedIndex);
+                var idx = comboBox.SelectedIndex;
+                if (idx < 0) return;
+                themeManager.SwitchPreset(idx);
+                var presetName = themeManager.PresetNames[idx];
+                if (Application.Current is { } app)
+                    app.RequestedThemeVariant = presetName.Contains("Dark", StringComparison.OrdinalIgnoreCase)
+                        ? ThemeVariant.Dark
+                        : ThemeVariant.Light;
             };
             mainWindowViewModel.WireThemeContent(comboBox);
         }

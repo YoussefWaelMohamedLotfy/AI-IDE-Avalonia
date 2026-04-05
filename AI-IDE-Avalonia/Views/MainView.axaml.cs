@@ -38,7 +38,7 @@ public partial class MainView : UserControl
     public MainView()
     {
         InitializeComponent();
-        _isDark = Application.Current?.RequestedThemeVariant == ThemeVariant.Dark;
+        _isDark = Application.Current?.ActualThemeVariant == ThemeVariant.Dark;
         InitializeDockState();
         DataContextChanged += OnDataContextChanged;
     }
@@ -54,6 +54,8 @@ public partial class MainView : UserControl
         {
             _isDark = !_isDark;
             App.ThemeManager?.Switch(_isDark ? 1 : 0);
+            if (Application.Current is { } app)
+                app.RequestedThemeVariant = _isDark ? ThemeVariant.Dark : ThemeVariant.Light;
         });
     }
 
