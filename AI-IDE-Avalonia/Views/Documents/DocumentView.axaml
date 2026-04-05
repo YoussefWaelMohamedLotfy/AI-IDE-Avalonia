@@ -46,9 +46,10 @@
       </WrapPanel>
     </Border>
 
-    <!-- Editor -->
+    <!-- Editor — always LTR so code/text layout is never reversed by the app RTL setting -->
     <AvalonEdit:TextEditor x:Name="Editor"
                            Grid.Row="1"
+                           FlowDirection="LeftToRight"
                            FontFamily="Cascadia Code,Consolas,Menlo,Monospace"
                            FontSize="14"
                            FontWeight="Light"
