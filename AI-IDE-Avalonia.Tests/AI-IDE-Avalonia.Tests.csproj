@@ -1,0 +1,32 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+    <!-- Copy all referenced assemblies to the output directory so the test host can find them -->
+    <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
+    <!-- Opt-in to the new dotnet test experience required by Microsoft.Testing.Platform on .NET 10+ -->
+    <TestingPlatformDotnetTestSupport>true</TestingPlatformDotnetTestSupport>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Avalonia headless testing support -->
+    <PackageReference Include="Avalonia.Headless" Version="11.3.13" />
+    <!-- New Microsoft Testing Platform (MTP) runner for xUnit v2 tests -->
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.3.0" />
+    <PackageReference Include="Microsoft.Testing.Extensions.CodeCoverage" Version="18.5.2" />
+    <PackageReference Include="Microsoft.Testing.Platform.MSBuild" Version="2.1.0" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="3.1.5">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+    <PackageReference Include="xunit.v3.mtp-v2" Version="3.2.2" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\AI-IDE-Avalonia\AI-IDE-Avalonia.csproj" />
+  </ItemGroup>
+
+</Project>
