@@ -46,7 +46,7 @@ jobs:
       run: dotnet test --no-build -c Release --verbosity normal
 
     - name: Publish
-      run: dotnet publish --no-restore -c Release -r ${{ matrix.rid }} --self-contained false -o publish
+      run: dotnet publish --no-restore -c Release -r ${{ matrix.rid }} -o publish
 
     - name: Zip publish output
       shell: pwsh
