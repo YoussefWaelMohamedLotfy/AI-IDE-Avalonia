@@ -81,7 +81,7 @@ public partial class MainView : UserControl
             return;
         }
 
-        var storageProvider = (this.GetVisualRoot() as TopLevel)?.StorageProvider;
+        var storageProvider = TopLevel.GetTopLevel(this)?.StorageProvider;
         if (storageProvider is null)
         {
             return;
@@ -128,7 +128,7 @@ public partial class MainView : UserControl
             return;
         }
 
-        var storageProvider = (this.GetVisualRoot() as TopLevel)?.StorageProvider;
+        var storageProvider = TopLevel.GetTopLevel(this)?.StorageProvider;
         if (storageProvider is null)
         {
             return;
@@ -181,7 +181,7 @@ public partial class MainView : UserControl
             return;
 
         // No file path — show a Save As dialog.
-        var topLevel = this.GetVisualRoot() as TopLevel;
+        var topLevel = TopLevel.GetTopLevel(this);
         var suggestedName = doc.BaseTitle.Length > 0 ? doc.BaseTitle : "untitled";
         var path = await AI_IDE_Avalonia.Services.StorageDialogHelper.PromptSavePathAsync(topLevel, suggestedName);
         if (path is not null)
@@ -204,7 +204,7 @@ public partial class MainView : UserControl
     /// <summary>Shows a Save File dialog and returns the chosen path, or <see langword="null"/> if cancelled.</summary>
     private Task<string?> PromptSavePathAsync(string suggestedName)
     {
-        var topLevel = this.GetVisualRoot() as TopLevel;
+        var topLevel = TopLevel.GetTopLevel(this);
         return AI_IDE_Avalonia.Services.StorageDialogHelper.PromptSavePathAsync(topLevel, suggestedName);
     }
 }

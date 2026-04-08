@@ -8,7 +8,7 @@
         WindowStartupLocation="CenterScreen"
         CanResize="False"
         ShowInTaskbar="True"
-        SystemDecorations="None"
+        WindowDecorations="None"
         TransparencyLevelHint="AcrylicBlur"
         Background="{x:Null}">
 

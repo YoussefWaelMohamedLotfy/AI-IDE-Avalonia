@@ -15,7 +15,7 @@
 
       <TextBox Grid.Column="0"
                Text="{Binding FilterText}"
-               Watermark="{Binding Loc.FilterWatermark}"
+               PlaceholderText="{Binding Loc.FilterWatermark}"
                Margin="4"
                Classes="clearButton" />
 
