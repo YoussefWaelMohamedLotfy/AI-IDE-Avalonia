@@ -43,6 +43,10 @@ public partial class App : Application
 #else
         AvaloniaXamlLoader.Load(this);
 #endif
+
+#if DEBUG
+        this.AttachDeveloperTools();
+#endif
     }
 
     public override void OnFrameworkInitializationCompleted()
