@@ -23,7 +23,7 @@ public class RecentFoldersService
     private static readonly JsonSerializerOptions JsonOptions = new() { WriteIndented = true };
 
     /// <summary>Loads and returns the persisted recent-folder list (most-recent first).</summary>
-    public List<RecentFolderEntry> Load()
+    public virtual List<RecentFolderEntry> Load()
     {
         try
         {
@@ -43,7 +43,7 @@ public class RecentFoldersService
     /// Adds <paramref name="folderPath"/> as the most-recently-used entry and persists the list.
     /// If the path is already present it is moved to the top.
     /// </summary>
-    public void Add(string folderPath)
+    public virtual void Add(string folderPath)
     {
         var entries = Load();
         entries.RemoveAll(e => string.Equals(e.Path, folderPath, StringComparison.OrdinalIgnoreCase));
