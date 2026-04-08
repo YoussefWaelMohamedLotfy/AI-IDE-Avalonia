@@ -39,7 +39,7 @@ public partial class SolutionExplorerView : UserControl
             RoutingStrategies.Bubble);
 
         tree.AddHandler(
-            Gestures.DoubleTappedEvent,
+            InputElement.DoubleTappedEvent,
             OnTreeDoubleTapped,
             RoutingStrategies.Bubble);
 

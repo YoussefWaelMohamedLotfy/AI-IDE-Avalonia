@@ -408,7 +408,7 @@ public partial class DocumentView : UserControl
             return;
 
         // Document has no file path — prompt for one.
-        var topLevel = this.GetVisualRoot() as TopLevel;
+        var topLevel = TopLevel.GetTopLevel(this);
         var path = await AI_IDE_Avalonia.Services.StorageDialogHelper.PromptSavePathAsync(
             topLevel, _currentVm.BaseTitle.Length > 0 ? _currentVm.BaseTitle : "untitled");
 

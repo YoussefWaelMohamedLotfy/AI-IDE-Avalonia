@@ -11,6 +11,7 @@ using System.Threading.Tasks;
 using AI_IDE_Avalonia.Collections;
 using AI_IDE_Avalonia.Models;
 using AI_IDE_Avalonia.Services;
+using Avalonia.Input.Platform;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Dock.Model.Mvvm.Controls;

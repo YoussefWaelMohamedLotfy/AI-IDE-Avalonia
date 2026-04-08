@@ -196,7 +196,7 @@
         <TextBox Grid.Column="0"
                  x:Name="InputBox"
                  Text="{Binding InputText}"
-                 Watermark="{Binding InputWatermark}"
+                 PlaceholderText="{Binding InputWatermark}"
                  IsEnabled="{Binding !IsSending}"
                  AcceptsReturn="False"
                  Padding="10,7"
