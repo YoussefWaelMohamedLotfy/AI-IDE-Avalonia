@@ -1,12 +1,12 @@
 using System;
 using System.IO;
-using System.Reactive.Linq;
+using R3;
 
 namespace AI_IDE_Avalonia.Services;
 
 /// <summary>
-/// Wraps <see cref="FileSystemWatcher"/> with Rx.NET observables so that consumers can
-/// subscribe to file-system events using standard reactive operators (throttle, filter, etc.).
+/// Wraps <see cref="FileSystemWatcher"/> with R3 observables so that consumers can
+/// subscribe to file-system events using standard reactive operators (debounce, filter, etc.).
 /// Dispose this instance to stop watching and release the underlying watcher.
 /// </summary>
 public sealed class FileSystemWatcherService : IDisposable
@@ -17,16 +17,16 @@ public sealed class FileSystemWatcherService : IDisposable
     // ── Public observables ─────────────────────────────────────────────────────
 
     /// <summary>Fires when an existing file's content or attributes change.</summary>
-    public IObservable<FileSystemEventArgs> Changed { get; }
+    public Observable<FileSystemEventArgs> Changed { get; }
 
     /// <summary>Fires when a new file or directory is created.</summary>
-    public IObservable<FileSystemEventArgs> Created { get; }
+    public Observable<FileSystemEventArgs> Created { get; }
 
     /// <summary>Fires when a file or directory is deleted.</summary>
-    public IObservable<FileSystemEventArgs> Deleted { get; }
+    public Observable<FileSystemEventArgs> Deleted { get; }
 
     /// <summary>Fires when a file or directory is renamed.</summary>
-    public IObservable<RenamedEventArgs> Renamed { get; }
+    public Observable<RenamedEventArgs> Renamed { get; }
 
     // ── Constructor ────────────────────────────────────────────────────────────
 
@@ -50,38 +50,38 @@ public sealed class FileSystemWatcherService : IDisposable
             EnableRaisingEvents = true
         };
 
-        // File content changes are throttled more aggressively (500 ms) because editors
+        // File content changes are debounced more aggressively (500 ms) because editors
         // often trigger multiple rapid write events for a single logical save operation.
         Changed = Observable
-            .FromEventPattern<FileSystemEventHandler, FileSystemEventArgs>(
+            .FromEvent<FileSystemEventHandler, FileSystemEventArgs>(
+                h => (_, e) => h(e),
                 h => _watcher.Changed += h,
                 h => _watcher.Changed -= h)
-            .Select(e => e.EventArgs)
-            .Throttle(TimeSpan.FromMilliseconds(500));
+            .Debounce(TimeSpan.FromMilliseconds(500));
 
         // Structural changes (create/delete/rename) are less prone to bursts, so a shorter
-        // throttle (200 ms) keeps the Solution Explorer responsive while still coalescing
+        // debounce (200 ms) keeps the Solution Explorer responsive while still coalescing
         // rapid successive events from batch file operations.
         Created = Observable
-            .FromEventPattern<FileSystemEventHandler, FileSystemEventArgs>(
+            .FromEvent<FileSystemEventHandler, FileSystemEventArgs>(
+                h => (_, e) => h(e),
                 h => _watcher.Created += h,
                 h => _watcher.Created -= h)
-            .Select(e => e.EventArgs)
-            .Throttle(TimeSpan.FromMilliseconds(200));
+            .Debounce(TimeSpan.FromMilliseconds(200));
 
         Deleted = Observable
-            .FromEventPattern<FileSystemEventHandler, FileSystemEventArgs>(
+            .FromEvent<FileSystemEventHandler, FileSystemEventArgs>(
+                h => (_, e) => h(e),
                 h => _watcher.Deleted += h,
                 h => _watcher.Deleted -= h)
-            .Select(e => e.EventArgs)
-            .Throttle(TimeSpan.FromMilliseconds(200));
+            .Debounce(TimeSpan.FromMilliseconds(200));
 
         Renamed = Observable
-            .FromEventPattern<RenamedEventHandler, RenamedEventArgs>(
+            .FromEvent<RenamedEventHandler, RenamedEventArgs>(
+                h => (_, e) => h(e),
                 h => _watcher.Renamed += h,
                 h => _watcher.Renamed -= h)
-            .Select(e => e.EventArgs)
-            .Throttle(TimeSpan.FromMilliseconds(200));
+            .Debounce(TimeSpan.FromMilliseconds(200));
     }
 
     // ── IDisposable ────────────────────────────────────────────────────────────

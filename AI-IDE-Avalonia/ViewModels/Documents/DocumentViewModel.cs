@@ -1,8 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Reactive.Disposables;
-using System.Reactive.Linq;
+using R3;
 using System.Threading.Tasks;
 using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -178,7 +177,7 @@ public partial class DocumentViewModel : Document, IDockCommandBarProvider, IAsy
             });
 
         // Combine both subscriptions so they are disposed together.
-        _fileWatchSubscription = new CompositeDisposable(changedSub, deletedSub);
+        _fileWatchSubscription = Disposable.Combine(changedSub, deletedSub);
     }
 
     // ── IDockCommandBarProvider ───────────────────────────────────────────────
