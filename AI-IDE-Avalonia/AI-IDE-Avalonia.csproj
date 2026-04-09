@@ -58,7 +58,7 @@
     <PackageReference Include="Dock.Avalonia.Diagnostics" Version="12.0.0-preview.1" />
     <PackageReference Include="Dock.Avalonia.Themes.Fluent" Version="12.0.0-preview.1" />
     <PackageReference Include="Dock.Model.Mvvm" Version="12.0.0-preview.1" />
-    <PackageReference Include="Dock.Serializer.SystemTextJson" Version="12.0.0-preview.1" />
+    <PackageReference Include="Dock.Serializer.SystemTextJson" Version="12.0.0" />
     <PackageReference Include="GitHub.Copilot.SDK" Version="0.2.1" />
     <PackageReference Include="Microsoft.Agents.AI" Version="1.0.0" />
     <PackageReference Include="Microsoft.Agents.AI.GitHub.Copilot" Version="1.0.0-preview.260402.1" />
