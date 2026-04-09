@@ -817,6 +817,15 @@ namespace AI_IDE_Avalonia.Resources {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Refresh.
+        /// </summary>
+        public static string Refresh {
+            get {
+                return ResourceManager.GetString("Refresh", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to  selected.
         /// </summary>
         public static string SelectedCount {

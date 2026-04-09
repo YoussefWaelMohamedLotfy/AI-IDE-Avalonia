@@ -394,6 +394,9 @@
   <data name="CollapseAll" xml:space="preserve">
     <value>طي الكل</value>
   </data>
+  <data name="Refresh" xml:space="preserve">
+    <value>تحديث</value>
+  </data>
   <data name="LoadingPlaceholder" xml:space="preserve">
     <value>جارٍ التحميل...</value>
   </data>

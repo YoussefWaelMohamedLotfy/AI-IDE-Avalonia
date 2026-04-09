@@ -394,6 +394,9 @@
   <data name="CollapseAll" xml:space="preserve">
     <value>Collapse All</value>
   </data>
+  <data name="Refresh" xml:space="preserve">
+    <value>Refresh</value>
+  </data>
   <data name="LoadingPlaceholder" xml:space="preserve">
     <value>Loading…</value>
   </data>

@@ -11,7 +11,7 @@
              x:DataType="vm:SolutionExplorerViewModel" x:CompileBindings="True">
   <Grid RowDefinitions="Auto,*,Auto">
 
-    <Grid Grid.Row="0" ColumnDefinitions="*,Auto,Auto">
+    <Grid Grid.Row="0" ColumnDefinitions="*,Auto,Auto,Auto">
 
       <TextBox Grid.Column="0"
                Text="{Binding FilterText}"
@@ -30,9 +30,17 @@
       <Button Grid.Column="2"
               ToolTip.Tip="{Binding Loc.CollapseAll}"
               Click="OnCollapseAll"
-              Margin="0,4,4,4" Padding="6,4">
+              Margin="0,4,2,4" Padding="6,4">
         <PathIcon Width="12" Height="12"
                   Data="M3 10 L8 5 L13 10 M3 15 L8 10 L13 15" />
+      </Button>
+
+      <Button Grid.Column="3"
+              ToolTip.Tip="{Binding Loc.Refresh}"
+              Command="{Binding RefreshWorkspaceCommand}"
+              Margin="0,4,4,4" Padding="6,4">
+        <PathIcon Width="12" Height="12"
+                  Data="M13 8A5 5 0 1 1 8 3V1L11 4 8 7V5A3 3 0 1 0 11 8Z" />
       </Button>
 
     </Grid>

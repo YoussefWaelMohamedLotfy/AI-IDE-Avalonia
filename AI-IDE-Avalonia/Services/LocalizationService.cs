@@ -82,6 +82,7 @@ public sealed class LocalizationService : ObservableObject
     public string FilterWatermark     => this[nameof(FilterWatermark)];
     public string ExpandAll           => this[nameof(ExpandAll)];
     public string CollapseAll         => this[nameof(CollapseAll)];
+    public string Refresh             => this[nameof(Refresh)];
     public string LoadingPlaceholder  => this[nameof(LoadingPlaceholder)];
     public string ItemsCount          => this[nameof(ItemsCount)];
     public string SelectedCount       => this[nameof(SelectedCount)];

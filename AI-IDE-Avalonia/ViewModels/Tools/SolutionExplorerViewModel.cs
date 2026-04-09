@@ -25,6 +25,9 @@ public partial class SolutionExplorerViewModel : Tool, IDisposable
     // Root nodes (one per open workspace root).
     private readonly ObservableCollection<TreeNode> _allNodes = TreeNode.CreateSampleProject();
 
+    // The folder path most recently loaded via LoadWorkspaceAsync — used by RefreshCommand.
+    private string? _workspacePath;
+
     // Cached singleton resolved lazily to avoid accessing App.Services before it is ready.
     private DocumentService? _documentService;
     private DocumentService DocumentSvc =>
@@ -299,6 +302,7 @@ public partial class SolutionExplorerViewModel : Tool, IDisposable
         var di = new DirectoryInfo(folderPath);
         if (!di.Exists) return;
 
+        _workspacePath = folderPath;
         progress?.Report($"Opening workspace: {di.Name}");
         progress?.Report("Scanning top-level directory\u2026");
 
@@ -336,6 +340,121 @@ public partial class SolutionExplorerViewModel : Tool, IDisposable
     /// </summary>
     public void LoadWorkspace(string folderPath) =>
         LoadWorkspaceAsync(folderPath).GetAwaiter().GetResult();
+
+    // ── Refresh command ────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Reconciles the in-memory tree with the current disk state without replacing any nodes.
+    /// Because existing <see cref="TreeNode"/> objects are kept in place, their
+    /// <see cref="TreeNode.IsExpanded"/> state is preserved naturally — no snapshot/restore
+    /// needed.  Only loaded folders are scanned; unloaded folders are left untouched and will
+    /// scan fresh from disk on the next user-triggered expand.
+    /// Has no effect when no workspace has been loaded yet.
+    /// </summary>
+    [RelayCommand]
+    private async Task RefreshWorkspaceAsync()
+    {
+        if (_workspacePath is null) return;
+
+        try
+        {
+            await ReconcileTreeAsync(_allNodes);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "ReconcileTreeAsync failed during refresh");
+        }
+
+        ApplyFilter();
+    }
+
+    /// <summary>
+    /// Recursively diffs every <em>loaded</em> folder in <paramref name="nodes"/> against disk:
+    /// <list type="bullet">
+    ///   <item>Entries on disk but missing from the tree are inserted in sorted order.</item>
+    ///   <item>Tree entries no longer present on disk are removed.</item>
+    ///   <item>Entries present in both are left untouched, preserving expand / load state.</item>
+    ///   <item>Unloaded folders (<see cref="TreeNode.ChildrenLoaded"/> = <c>false</c>) are skipped
+    ///         — they will load correctly from disk when the user expands them.</item>
+    /// </list>
+    /// </summary>
+    private async Task ReconcileTreeAsync(IEnumerable<TreeNode> nodes)
+    {
+        foreach (var node in nodes.ToList())
+        {
+            if (!node.IsFolder || node.IsLoadingPlaceholder || node.FullPath is null) continue;
+            if (!node.ChildrenLoaded) continue;
+
+            var dirPath = node.FullPath;
+
+            if (!Directory.Exists(dirPath))
+            {
+                RemoveNodeFromTree(node, _allNodes);
+                continue;
+            }
+
+            DirectoryInfo[] subDirs;
+            FileInfo[] files;
+            try
+            {
+                (subDirs, files) = await Task.Run(() =>
+                {
+                    var dir = new DirectoryInfo(dirPath);
+                    return (
+                        dir.GetDirectories()
+                           .Where(d => (d.Attributes & FileAttributes.Hidden) == 0)
+                           .OrderBy(d => d.Name, StringComparer.OrdinalIgnoreCase)
+                           .ToArray(),
+                        dir.GetFiles()
+                           .Where(f => (f.Attributes & FileAttributes.Hidden) == 0)
+                           .OrderBy(f => f.Name, StringComparer.OrdinalIgnoreCase)
+                           .ToArray()
+                    );
+                });
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            {
+                Logger.LogWarning(ex, "Reconcile failed for '{DirPath}'", dirPath);
+                continue;
+            }
+
+            var diskPaths = new HashSet<string>(
+                subDirs.Select(x => x.FullName).Concat(files.Select(x => x.FullName)),
+                StringComparer.OrdinalIgnoreCase);
+
+            // Remove entries no longer on disk.
+            var toRemove = node.Children!
+                .Where(c => !c.IsLoadingPlaceholder
+                            && c.FullPath is not null
+                            && !diskPaths.Contains(c.FullPath!))
+                .ToList();
+            foreach (var child in toRemove)
+                node.Children!.Remove(child);
+
+            // Add entries present on disk but missing from the tree.
+            var existingPaths = new HashSet<string>(
+                node.Children!.Where(c => c.FullPath is not null).Select(c => c.FullPath!),
+                StringComparer.OrdinalIgnoreCase);
+
+            foreach (var subDir in subDirs.Where(x => !existingPaths.Contains(x.FullName)))
+            {
+                var child = new TreeNode(
+                    subDir.Name, isFolder: true,
+                    children: new ObservableCollection<TreeNode> { TreeNode.LoadingPlaceholder },
+                    fullPath: subDir.FullName, childrenLoaded: false);
+                ObserveNode(child);
+                InsertNodeSorted(node.Children!, child);
+            }
+
+            foreach (var file in files.Where(x => !existingPaths.Contains(x.FullName)))
+                InsertNodeSorted(node.Children!,
+                    new TreeNode(file.Name, isFolder: false, fullPath: file.FullName));
+
+            // Recurse into loaded sub-folders.
+            if (node.Children is not null)
+                await ReconcileTreeAsync(node.Children);
+        }
+    }
 
     // ── File-system watcher lifecycle ──────────────────────────────────────────
 

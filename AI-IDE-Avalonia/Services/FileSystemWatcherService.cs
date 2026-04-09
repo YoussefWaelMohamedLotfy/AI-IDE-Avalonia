@@ -47,6 +47,9 @@ public sealed class FileSystemWatcherService : IDisposable
                          | NotifyFilters.DirectoryName
                          | NotifyFilters.Size,
             IncludeSubdirectories = recursive,
+            // 64 KB buffer reduces the risk of Windows dropping events under heavy I/O.
+            // The default of 8 KB can overflow quickly in large or busy workspaces.
+            InternalBufferSize = 65536,
             EnableRaisingEvents = true
         };
 
