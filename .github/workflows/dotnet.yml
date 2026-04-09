@@ -69,7 +69,7 @@ jobs:
     - name: Install InnoSetup (Windows)
       if: runner.os == 'Windows'
       shell: pwsh
-      run: winget install --id JRSoftware.InnoSetup --silent --accept-package-agreements --accept-source-agreements
+      run: choco install innosetup
 
     - name: Build installer (Windows)
       if: runner.os == 'Windows'
