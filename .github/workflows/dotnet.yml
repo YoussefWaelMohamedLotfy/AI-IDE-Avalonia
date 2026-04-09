@@ -69,7 +69,7 @@ jobs:
     - name: Install InnoSetup (Windows)
       if: runner.os == 'Windows'
       shell: pwsh
-      run: winget install --id JRSoftware.InnoSetup --silent --accept-source-agreements --accept-package-agreements
+      run: winget install --id JRSoftware.InnoSetup --silent --accept-package-agreements --accept-source-agreements
 
     - name: Build installer (Windows)
       if: runner.os == 'Windows'
