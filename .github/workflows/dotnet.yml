@@ -15,8 +15,7 @@ jobs:
         include:
           - os: windows-latest
             rid: win-x64
-            artifact-name: AI-IDE-Avalonia-win-x64
-            zip-name: AI-IDE-Avalonia-win-x64.zip
+            artifact-name: AI-IDE-Avalonia-win-x64-Setup
           - os: ubuntu-latest
             rid: linux-x64
             artifact-name: AI-IDE-Avalonia-linux-x64
@@ -55,12 +54,34 @@ jobs:
     - name: Publish
       run: dotnet publish AI-IDE-Avalonia/AI-IDE-Avalonia.csproj --no-restore -c Release -r ${{ matrix.rid }} -o publish
 
-    - name: Zip publish output
+    - name: Zip publish output (non-Windows)
+      if: runner.os != 'Windows'
       shell: pwsh
       run: Compress-Archive -Path publish/* -DestinationPath ${{ matrix.zip-name }}
 
-    - name: Upload artifact
+    - name: Upload artifact (non-Windows)
+      if: runner.os != 'Windows'
       uses: actions/upload-artifact@v7
       with:
         name: ${{ matrix.artifact-name }}
         path: ${{ matrix.zip-name }}
+
+    - name: Install InnoSetup (Windows)
+      if: runner.os == 'Windows'
+      shell: pwsh
+      run: winget install --id JRSoftware.InnoSetup --silent --accept-source-agreements --accept-package-agreements
+
+    - name: Build installer (Windows)
+      if: runner.os == 'Windows'
+      shell: pwsh
+      run: |
+        $iscc = (Get-ChildItem "C:\Program Files (x86)\Inno Setup*\ISCC.exe" -ErrorAction Stop | Select-Object -First 1).FullName
+        New-Item -ItemType Directory -Force -Path installer-output | Out-Null
+        & $iscc installer/AI-IDE-Avalonia.iss
+
+    - name: Upload installer artifact (Windows)
+      if: runner.os == 'Windows'
+      uses: actions/upload-artifact@v7
+      with:
+        name: ${{ matrix.artifact-name }}
+        path: installer-output/AI-IDE-Avalonia-win-x64-Setup.exe
