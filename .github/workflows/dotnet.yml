@@ -69,7 +69,7 @@ jobs:
       with:
         name: ${{ matrix.artifact-name }}
         path: ${{ runner.os == 'Linux' && format('{0}.tar.zst', matrix.artifact-name) || matrix.zip-name }}
-        compression: none
+        compression-level: 0
 
     - name: Install InnoSetup (Windows)
       if: runner.os == 'Windows'
@@ -90,4 +90,4 @@ jobs:
       with:
         name: ${{ matrix.artifact-name }}
         path: installer-output/AI-IDE-Avalonia-win-x64-Setup.exe
-        compression: none
+        compression-level: 0
