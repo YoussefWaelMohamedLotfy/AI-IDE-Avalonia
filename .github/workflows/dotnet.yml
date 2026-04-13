@@ -58,6 +58,8 @@ jobs:
       shell: bash
       run: |
         if [ "${{ runner.os }}" = "Linux" ]; then
+          chmod +x publish/AI-IDE-Avalonia
+          chmod +x publish/runtimes/linux-x64/native/copilot
           tar --zstd -cf ${{ matrix.artifact-name }}.tar.zst -C publish . 
         else
           tar -czf ${{ matrix.zip-name }} -C publish .
