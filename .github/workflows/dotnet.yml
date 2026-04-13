@@ -19,7 +19,6 @@ jobs:
           - os: ubuntu-latest
             rid: linux-x64
             artifact-name: AI-IDE-Avalonia-linux-x64
-            zip-name: AI-IDE-Avalonia-linux-x64.zip
           - os: macos-latest
             rid: osx-x64
             artifact-name: AI-IDE-Avalonia-osx-x64
@@ -54,17 +53,23 @@ jobs:
     - name: Publish
       run: dotnet publish AI-IDE-Avalonia/AI-IDE-Avalonia.csproj --no-restore -c Release -r ${{ matrix.rid }} -o publish
 
-    - name: Zip publish output (non-Windows)
+    - name: Compress publish output (Linux/macOS)
       if: runner.os != 'Windows'
-      shell: pwsh
-      run: Compress-Archive -Path publish/* -DestinationPath ${{ matrix.zip-name }}
+      shell: bash
+      run: |
+        if [ "${{ runner.os }}" = "Linux" ]; then
+          tar --zstd -cf ${{ matrix.artifact-name }}.tar.zst -C publish . 
+        else
+          tar -czf ${{ matrix.zip-name }} -C publish .
+        fi
 
     - name: Upload artifact (non-Windows)
       if: runner.os != 'Windows'
       uses: actions/upload-artifact@v7
       with:
         name: ${{ matrix.artifact-name }}
-        path: ${{ matrix.zip-name }}
+        path: ${{ runner.os == 'Linux' && format('{0}.tar.zst', matrix.artifact-name) || matrix.zip-name }}
+        compression: none
 
     - name: Install InnoSetup (Windows)
       if: runner.os == 'Windows'
@@ -85,3 +90,4 @@ jobs:
       with:
         name: ${{ matrix.artifact-name }}
         path: installer-output/AI-IDE-Avalonia-win-x64-Setup.exe
+        compression: none
