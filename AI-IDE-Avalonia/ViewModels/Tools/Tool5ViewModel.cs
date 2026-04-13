@@ -204,7 +204,7 @@ public partial class Tool5ViewModel : Tool, IAsyncDisposable
     {
         try
         {
-            using var client = new CopilotClient(new CopilotClientOptions { CliPath = _copilotCliPath });
+            using var client = new CopilotClient(new CopilotClientOptions { CliPath = CopilotCliPath });
             await client.StartAsync(ct);
             var models = await client.ListModelsAsync(ct);
             _cachedCopilotModels.Clear();
@@ -256,16 +256,17 @@ public partial class Tool5ViewModel : Tool, IAsyncDisposable
     }
 
     // ── GitHub Copilot lazy init ────────────────────────────────────────────────
-
-    private readonly string _copilotCliPath =
-        @$"runtimes\{RuntimeInformation.RuntimeIdentifier}\native\copilot.exe";
+    private static readonly string CopilotExeFileName =
+        RuntimeInformation.RuntimeIdentifier != "win-x64" ? "copilot" : "copilot.exe";
+    private static readonly string CopilotCliPath =
+        @$"runtimes\{RuntimeInformation.RuntimeIdentifier}\native\{CopilotExeFileName}";
 
     private async Task<(GitHubCopilotAgent agent, AgentSession session)> GetCopilotBackendAsync()
     {
         if (_copilotAgent != null && _copilotSession != null)
             return (_copilotAgent, _copilotSession);
 
-        _copilotClient = new CopilotClient(new CopilotClientOptions { CliPath = _copilotCliPath });
+        _copilotClient = new CopilotClient(new CopilotClientOptions { CliPath = CopilotCliPath });
         await _copilotClient.StartAsync();
 
         var sessionConfig = new SessionConfig
