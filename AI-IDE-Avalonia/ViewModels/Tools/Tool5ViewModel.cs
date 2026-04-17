@@ -259,7 +259,7 @@ public partial class Tool5ViewModel : Tool, IAsyncDisposable
     private static readonly string CopilotExeFileName =
         RuntimeInformation.RuntimeIdentifier != "win-x64" ? "copilot" : "copilot.exe";
     private static readonly string CopilotCliPath =
-        @$"runtimes\{RuntimeInformation.RuntimeIdentifier}\native\{CopilotExeFileName}";
+        @$".\runtimes\{RuntimeInformation.RuntimeIdentifier}\native\{CopilotExeFileName}";
 
     private async Task<(GitHubCopilotAgent agent, AgentSession session)> GetCopilotBackendAsync()
     {
