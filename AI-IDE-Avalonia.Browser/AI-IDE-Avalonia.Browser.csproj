@@ -5,6 +5,10 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <!-- Force Emscripten native linking so SkiaSharp/HarfBuzzSharp .a files are linked in -->
+    <WasmBuildNative>true</WasmBuildNative>
+    <!-- Ensure WasmBuildApp runs during a normal Build (not only on Publish), including from VS -->
+    <WasmBuildOnlyAfterPublish>false</WasmBuildOnlyAfterPublish>
   </PropertyGroup>
 
   <ItemGroup>
