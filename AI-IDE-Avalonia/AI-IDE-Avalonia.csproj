@@ -1,39 +1,16 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <ApplicationIcon>Assets\app-icon.ico</ApplicationIcon>
-    <OutputType>WinExe</OutputType>
     <TargetFramework>net10.0</TargetFramework>
     <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
     <Nullable>enable</Nullable>
-    <ApplicationManifest>app.manifest</ApplicationManifest>
     <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
 
     <Version>1.0.0</Version>
   </PropertyGroup>
 
-  <!-- Publish / Deployment -->
-  <PropertyGroup>
-    <!-- Bundle everything into a single .exe -->
-    <PublishSingleFile>true</PublishSingleFile>
-    <!-- Extract native libraries on first run rather than blocking single-file bundling -->
-    <!-- <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract> -->
-    <!-- Compress bundled assemblies to reduce output size -->
-    <!-- <EnableCompressionInSingleFile>true</EnableCompressionInSingleFile> -->
-    <!-- Pre-compile to native code for faster cold-start -->
-    <PublishReadyToRun>true</PublishReadyToRun>
-  </PropertyGroup>
-
-  <!-- Release-only: embed symbols into the binary for meaningful stack traces in production -->
-  <PropertyGroup Condition="'$(Configuration)' == 'Release'">
-    <DebugType>embedded</DebugType>
-  </PropertyGroup>
-
   <ItemGroup>
     <Folder Include="Models\" />
     <AvaloniaResource Include="Assets\**" />
-    <Content Include="appsettings.json">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Content>
     <!-- Declare the Arabic satellite resource explicitly so MSBuild compiles it
          into the ar/ sub-folder satellite assembly. -->
     <EmbeddedResource Update="Resources\Strings.ar.resx">
@@ -48,14 +25,14 @@
   <ItemGroup>
     <PackageReference Include="Avalonia" Version="12.0.2" />
     <PackageReference Include="Avalonia.AvaloniaEdit" Version="12.0.0" />
-    <PackageReference Include="Avalonia.Desktop" Version="12.0.2" />
+
     <PackageReference Include="Avalonia.Themes.Fluent" Version="12.0.2" />
     <PackageReference Include="Avalonia.Fonts.Inter" Version="12.0.2" />
-    <PackageReference Include="AvaloniaEdit.TextMate" Version="12.0.0" />
-    <PackageReference Include="AvaloniaUI.DiagnosticsSupport" Version="2.2.1" />
+    <PackageReference Include="AvaloniaEdit.TextMate" Version="12.0.0" Condition="'$(RuntimeIdentifier)' != 'browser-wasm'" />
+    <PackageReference Include="AvaloniaUI.DiagnosticsSupport" Version="2.2.1" Condition="'$(RuntimeIdentifier)' != 'browser-wasm'" />
     <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.2" />
     <PackageReference Include="Dock.Avalonia" Version="12.0.0.2" />
-    <PackageReference Include="Dock.Avalonia.Diagnostics" Version="12.0.0.2" />
+    <PackageReference Include="Dock.Avalonia.Diagnostics" Version="12.0.0.2" Condition="'$(RuntimeIdentifier)' != 'browser-wasm'" />
     <PackageReference Include="Dock.Avalonia.Themes.Fluent" Version="12.0.0.2" />
     <PackageReference Include="Dock.Model.Mvvm" Version="12.0.0.2" />
     <PackageReference Include="Dock.Serializer.SystemTextJson" Version="12.0.0.2" />
@@ -73,13 +50,13 @@
     <PackageReference Include="Serilog.Extensions.Logging" Version="10.0.0" />
     <PackageReference Include="Serilog.Settings.Configuration" Version="10.0.0" />
     <PackageReference Include="Serilog.Sinks.Console" Version="6.1.1" />
-    <PackageReference Include="Serilog.Sinks.File" Version="7.0.0" />
+    <PackageReference Include="Serilog.Sinks.File" Version="7.0.0" Condition="'$(RuntimeIdentifier)' != 'browser-wasm'" />
     <PackageReference Include="StaticViewLocator" Version="0.4.0">
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
-    <PackageReference Include="TextMateSharp.Grammars" Version="2.0.3" />
-    <PackageReference Include="Tmds.DBus.Protocol" Version="0.93.0" />
+    <PackageReference Include="TextMateSharp.Grammars" Version="2.0.3" Condition="'$(RuntimeIdentifier)' != 'browser-wasm'" />
+
   </ItemGroup>
 
   <ItemGroup>

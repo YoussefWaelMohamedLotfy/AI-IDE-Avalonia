@@ -6,5 +6,7 @@
     <File Path="README.md" />
   </Folder>
   <Project Path="AI-IDE-Avalonia/AI-IDE-Avalonia.csproj" />
+  <Project Path="AI-IDE-Avalonia.Desktop/AI-IDE-Avalonia.Desktop.csproj" />
+  <Project Path="AI-IDE-Avalonia.Browser/AI-IDE-Avalonia.Browser.csproj" />
   <Project Path="AI-IDE-Avalonia.Tests/AI-IDE-Avalonia.Tests.csproj" />
 </Solution>

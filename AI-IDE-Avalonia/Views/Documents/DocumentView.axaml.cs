@@ -14,10 +14,14 @@ using AvaloniaEdit;
 using AvaloniaEdit.Editing;
 using AvaloniaEdit.Indentation.CSharp;
 using AvaloniaEdit.Rendering;
+#if !BROWSER
 using AvaloniaEdit.TextMate;
+#endif
 using AI_IDE_Avalonia.Controls;
 using AI_IDE_Avalonia.ViewModels.Documents;
+#if !BROWSER
 using TextMateSharp.Grammars;
+#endif
 
 namespace AI_IDE_Avalonia.Views.Documents;
 
@@ -26,8 +30,10 @@ public partial class DocumentView : UserControl
     private readonly TextEditor _editor;
     private readonly BreakpointMargin _breakpointMargin;
     private readonly BreakpointLineHighlighter _breakpointHighlighter;
+#if !BROWSER
     private TextMate.Installation? _textMateInstallation;
     private RegistryOptions? _registryOptions;
+#endif
     private readonly ComboBox? _languageCombo;
     private readonly TextBlock? _caretPositionText;
     private readonly TextBlock? _breakpointCountText;
@@ -83,6 +89,7 @@ public partial class DocumentView : UserControl
         _breakpointHighlighter = new BreakpointLineHighlighter(_breakpointMargin.BreakpointLines);
         _editor.TextArea.TextView.BackgroundRenderers.Add(_breakpointHighlighter);
 
+#if !BROWSER
         try
         {
             var isDark = Application.Current?.ActualThemeVariant == ThemeVariant.Dark;
@@ -104,6 +111,7 @@ public partial class DocumentView : UserControl
             _languageCombo.DisplayMemberBinding = new Avalonia.Data.Binding("Id");
             _languageCombo.SelectionChanged += OnLanguageComboChanged;
         }
+#endif
 
         DataContextChanged += OnDataContextChanged;
 
@@ -176,14 +184,17 @@ public partial class DocumentView : UserControl
         if (_showLineNumbersToggle is not null)
             _showLineNumbersToggle.IsCheckedChanged -= OnShowLineNumbersChanged;
 
+#if !BROWSER
         if (_languageCombo is not null)
             _languageCombo.SelectionChanged -= OnLanguageComboChanged;
+#endif
 
         // 3. Remove the breakpoint margin/highlighter and detach its event.
         _breakpointMargin.BreakpointsChanged -= OnBreakpointsChanged;
         _editor.TextArea.LeftMargins.Remove(_breakpointMargin);
         _editor.TextArea.TextView.BackgroundRenderers.Remove(_breakpointHighlighter);
 
+#if !BROWSER
         // 4. Dispose TextMate — releases grammar parsers and unregisters all line transformers
         //    that were registered on the editor's TextView. Without this, transformers accumulate.
         if (Application.Current is { } app)
@@ -195,6 +206,7 @@ public partial class DocumentView : UserControl
             _textMateInstallation.Dispose();
             _textMateInstallation = null;
         }
+#endif
     }
 
     // ── ViewModel sync ────────────────────────────────────────────────────────
@@ -229,6 +241,7 @@ public partial class DocumentView : UserControl
         SyncLanguageCombo(vm.SelectedLanguageExtension);
     }
 
+#if !BROWSER
     // ── TextMate ──────────────────────────────────────────────────────────────
 
     private void OnAppThemeVariantChanged(object? sender, EventArgs e) => ApplyThemeFromAppVariant();
@@ -315,6 +328,11 @@ public partial class DocumentView : UserControl
         }
         return false;
     }
+#else
+    private void ApplyThemeFromAppVariant() { }
+    private void ApplyLanguageByExtension(string extension) { }
+    private void SyncLanguageCombo(string extension) { }
+#endif
 
     // ── Editor event handlers ─────────────────────────────────────────────────
 

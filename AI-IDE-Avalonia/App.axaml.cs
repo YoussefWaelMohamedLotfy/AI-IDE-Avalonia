@@ -44,7 +44,7 @@ public partial class App : Application
         AvaloniaXamlLoader.Load(this);
 #endif
 
-#if DEBUG
+#if DEBUG && !BROWSER
         this.AttachDeveloperTools();
 #endif
     }
@@ -166,11 +166,15 @@ public partial class App : Application
 
     private static void ConfigureServices(IServiceCollection services)
     {
-        // Configuration — built from appsettings.json next to the executable.
-        var configuration = new ConfigurationBuilder()
-            .SetBasePath(AppContext.BaseDirectory)
-            .AddJsonFile("appsettings.json", optional: true, reloadOnChange: true)
-            .Build();
+        // Configuration — built from appsettings.json next to the executable (not available in browser).
+        var configBuilder = new ConfigurationBuilder();
+        if (!OperatingSystem.IsBrowser())
+        {
+            configBuilder
+                .SetBasePath(AppContext.BaseDirectory)
+                .AddJsonFile("appsettings.json", optional: true, reloadOnChange: true);
+        }
+        var configuration = configBuilder.Build();
         services.AddSingleton<IConfiguration>(configuration);
 
         // Logging — Serilog reads its config from the "Serilog" section.
