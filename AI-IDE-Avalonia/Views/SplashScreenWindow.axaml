@@ -2,6 +2,7 @@
         xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:vm="using:AI_IDE_Avalonia.ViewModels"
+        xmlns:controls="using:AI_IDE_Avalonia.Controls"
         x:DataType="vm:SplashScreenViewModel"
         Title="AI IDE"
         Width="480" Height="280"
@@ -29,6 +30,10 @@
     <ExperimentalAcrylicBorder IsHitTestVisible="False"
                                Material="{StaticResource SplashAcrylic}"
                                CornerRadius="12" />
+
+    <!-- Full-window wave dots background, clipped to rounded corners -->
+    <controls:WaveDotsControl IsHitTestVisible="False"
+                              ClipToBounds="True" />
 
     <Border CornerRadius="12"
             BorderThickness="1"
