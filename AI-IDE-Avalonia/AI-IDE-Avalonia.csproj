@@ -35,11 +35,11 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Avalonia" Version="12.0.2" />
+    <PackageReference Include="Avalonia" Version="12.0.3" />
     <PackageReference Include="Avalonia.AvaloniaEdit" Version="12.0.0" />
 
-    <PackageReference Include="Avalonia.Themes.Fluent" Version="12.0.2" />
-    <PackageReference Include="Avalonia.Fonts.Inter" Version="12.0.2" />
+    <PackageReference Include="Avalonia.Themes.Fluent" Version="12.0.3" />
+    <PackageReference Include="Avalonia.Fonts.Inter" Version="12.0.3" />
     <PackageReference Include="AvaloniaEdit.TextMate" Version="12.0.0" Condition="'$(RuntimeIdentifier)' != 'browser-wasm'" />
     <PackageReference Include="AvaloniaUI.DiagnosticsSupport" Version="2.2.1" Condition="'$(RuntimeIdentifier)' != 'browser-wasm'" />
     <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.2" />
@@ -49,14 +49,14 @@
     <PackageReference Include="Dock.Model.Mvvm" Version="12.0.0.2" />
     <PackageReference Include="Dock.Serializer.SystemTextJson" Version="12.0.0.2" />
     <PackageReference Include="GitHub.Copilot.SDK" Version="0.3.0" />
-    <PackageReference Include="Microsoft.Agents.AI" Version="1.4.0" />
+    <PackageReference Include="Microsoft.Agents.AI" Version="1.6.1" />
     <PackageReference Include="Microsoft.Agents.AI.GitHub.Copilot" Version="1.4.0-preview.260505.1" />
-    <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="10.0.7" />
-    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.7" />
-    <PackageReference Include="Microsoft.Extensions.Logging" Version="10.0.7" />
-    <PackageReference Include="Nerdbank.MessagePack" Version="1.1.62" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="10.0.8" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.8" />
+    <PackageReference Include="Microsoft.Extensions.Logging" Version="10.0.8" />
+    <PackageReference Include="Nerdbank.MessagePack" Version="1.2.4" />
     <PackageReference Include="OllamaSharp" Version="5.4.25" />
-    <PackageReference Include="R3" Version="1.3.0" />
+    <PackageReference Include="R3" Version="1.3.1" />
     <PackageReference Include="RibbonControl.Core" Version="12.0.0" />
     <PackageReference Include="RibbonControl.Persistence.Json" Version="12.0.0" />
     <PackageReference Include="Serilog" Version="4.3.1" />
