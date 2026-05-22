@@ -51,7 +51,7 @@
     <PackageReference Include="Dock.Model.Mvvm" Version="12.0.0.2" />
     <PackageReference Include="Dock.Serializer.SystemTextJson" Version="12.0.0.2" />
     <PackageReference Include="GitHub.Copilot.SDK" Version="0.3.0" />
-    <PackageReference Include="Microsoft.Agents.AI" Version="1.6.1" />
+    <PackageReference Include="Microsoft.Agents.AI" Version="1.6.2" />
     <PackageReference Include="Microsoft.Agents.AI.GitHub.Copilot" Version="1.4.0-preview.260505.1" />
     <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="10.0.8" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.8" />
