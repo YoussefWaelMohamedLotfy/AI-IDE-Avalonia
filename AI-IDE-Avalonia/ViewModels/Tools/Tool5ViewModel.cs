@@ -68,7 +68,7 @@ public partial class Tool5ViewModel : Tool, IAsyncDisposable
 
     // ── Google Gemini backend ───────────────────────────────────────────────────
 
-    private readonly string _googleApiKey = "AQ.Ab8RN6JH1JwXsM9xM9CQHqzxjSsLvgCAmjUsAYsadzQtzITy8w";
+    private readonly string _googleApiKey = "";
     private IAiChatClient? _googleClient;
 
     private readonly List<string> _inputHistory = [];
