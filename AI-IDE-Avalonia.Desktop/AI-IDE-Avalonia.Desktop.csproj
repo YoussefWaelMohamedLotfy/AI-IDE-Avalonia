@@ -24,8 +24,8 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Avalonia.Desktop" Version="12.0.3" />
-    <PackageReference Include="Tmds.DBus.Protocol" Version="0.93.0" Condition="'$(RuntimeIdentifier)' != 'win'" />
+    <PackageReference Include="Avalonia.Desktop" Version="12.0.4" />
+    <PackageReference Include="Tmds.DBus.Protocol" Version="0.94.1" Condition="'$(RuntimeIdentifier)' != 'win'" />
   </ItemGroup>
 
   <ItemGroup>

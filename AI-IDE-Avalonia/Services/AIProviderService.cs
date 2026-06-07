@@ -4,7 +4,7 @@ namespace AI_IDE_Avalonia.Services;
 
 public sealed class AIProviderService
 {
-    public static readonly string[] AvailableProviders = ["Ollama", "Github Copilot"];
+    public static readonly string[] AvailableProviders = ["Ollama", "Github Copilot", "Google Gemini"];
 
     private string _selectedProvider = AvailableProviders[0];
 

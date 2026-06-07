@@ -13,7 +13,9 @@ using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Dock.Model.Mvvm.Controls;
+
 using GitHub.Copilot.SDK;
+
 using Microsoft.Agents.AI;
 using Microsoft.Agents.AI.GitHub.Copilot;
 using Microsoft.Extensions.DependencyInjection;
@@ -22,6 +24,7 @@ using Ai = Microsoft.Extensions.AI;
 using AiChatMessage = Microsoft.Extensions.AI.ChatMessage;
 using AiChatRole = Microsoft.Extensions.AI.ChatRole;
 using IAiChatClient = Microsoft.Extensions.AI.IChatClient;
+using Google.GenAI;
 
 namespace AI_IDE_Avalonia.ViewModels.Tools;
 
@@ -30,6 +33,7 @@ public partial class Tool5ViewModel : Tool, IAsyncDisposable
     private const string OllamaEndpoint = "http://localhost:11434";
     private const string DefaultOllamaModel = "gemma4:e2b";
     private const string DefaultCopilotModel = "gpt-5-mini";
+    private const string DefaultGoogleModel = "gemini-2.5-flash";
     private const int MaxToolIterations = 10;
 
     private const string SystemInstructions = """
@@ -47,6 +51,7 @@ public partial class Tool5ViewModel : Tool, IAsyncDisposable
 
     private readonly List<string> _cachedOllamaModels = [];
     private readonly List<string> _cachedCopilotModels = [];
+    private readonly List<string> _cachedGoogleModels = [];
 
     // ── Ollama backend ──────────────────────────────────────────────────────────
 
@@ -60,6 +65,11 @@ public partial class Tool5ViewModel : Tool, IAsyncDisposable
     private AgentSession? _copilotSession;
 
     // ── Input history ────────────────────────────────────────────────────────────
+
+    // ── Google Gemini backend ───────────────────────────────────────────────────
+
+    private readonly string _googleApiKey = "AQ.Ab8RN6JH1JwXsM9xM9CQHqzxjSsLvgCAmjUsAYsadzQtzITy8w";
+    private IAiChatClient? _googleClient;
 
     private readonly List<string> _inputHistory = [];
     private int _historyIndex = -1;
@@ -131,6 +141,7 @@ public partial class Tool5ViewModel : Tool, IAsyncDisposable
     private async Task HandleProviderChangedAsync()
     {
         await DisposeGitHubCopilotAsync();
+        DisposeGoogleClient();
         _chatHistory.Clear();
         _chatHistory.Add(new AiChatMessage(AiChatRole.System, SystemInstructions));
         Messages.Clear();
@@ -158,6 +169,12 @@ public partial class Tool5ViewModel : Tool, IAsyncDisposable
             DisposeOllamaClient();
             _ollamaClient = new OllamaApiClient(new Uri(OllamaEndpoint), value);
         }
+        else if (ProviderService.SelectedProvider == "Google Gemini")
+        {
+            DisposeGoogleClient();
+            var client = new Client(apiKey: _googleApiKey);
+            _googleClient = Ai.GoogleGenAIExtensions.AsIChatClient(client, value);
+        }
         else
         {
             _ = DisposeGitHubCopilotAsync();
@@ -173,7 +190,8 @@ public partial class Tool5ViewModel : Tool, IAsyncDisposable
         {
             var ollamaTask = FetchOllamaModelsAsync(ct);
             var copilotTask = FetchCopilotModelsAsync(ct);
-            await Task.WhenAll(ollamaTask, copilotTask);
+            var googleTask = FetchGoogleModelsAsync(ct);
+            await Task.WhenAll(ollamaTask, copilotTask, googleTask);
 
             // Populate the UI list for whichever provider is currently active.
             PopulateAvailableModels(ProviderService.SelectedProvider);
@@ -218,12 +236,25 @@ public partial class Tool5ViewModel : Tool, IAsyncDisposable
         }
     }
 
+    private async Task FetchGoogleModelsAsync(CancellationToken ct)
+    {
+        _cachedGoogleModels.Clear();
+        _cachedGoogleModels.Add("gemini-2.5-flash");
+        _cachedGoogleModels.Add("gemini-2.5-pro");
+        _cachedGoogleModels.Add("gemini-2.0-flash");
+        await Task.CompletedTask;
+    }
+
     private void PopulateAvailableModels(string provider)
     {
         AvailableModels.Clear();
 
-        var source = provider == "Github Copilot" ? _cachedCopilotModels : _cachedOllamaModels;
-        var fallback = provider == "Github Copilot" ? DefaultCopilotModel : DefaultOllamaModel;
+        var source = provider == "Github Copilot" ? _cachedCopilotModels : 
+                     provider == "Google Gemini" ? _cachedGoogleModels : 
+                     _cachedOllamaModels;
+        var fallback = provider == "Github Copilot" ? DefaultCopilotModel : 
+                       provider == "Google Gemini" ? DefaultGoogleModel : 
+                       DefaultOllamaModel;
 
         foreach (var m in source)
             AvailableModels.Add(m);
@@ -247,6 +278,11 @@ public partial class Tool5ViewModel : Tool, IAsyncDisposable
         {
             CurrentModelLabel = SelectedModel;
             InputWatermark = $"Ask GitHub Copilot ({SelectedModel}) anything";
+        }
+        else if (provider == "Google Gemini")
+        {
+            CurrentModelLabel = SelectedModel;
+            InputWatermark = $"Ask Google Gemini ({SelectedModel}) anything";
         }
         else
         {
@@ -330,6 +366,12 @@ public partial class Tool5ViewModel : Tool, IAsyncDisposable
             disposable.Dispose();
     }
 
+    private void DisposeGoogleClient()
+    {
+        if (_googleClient is IDisposable disposable)
+            disposable.Dispose();
+    }
+
     // ── Send command ───────────────────────────────────────────────────────────
 
     [RelayCommand(CanExecute = nameof(CanSend))]
@@ -351,6 +393,8 @@ public partial class Tool5ViewModel : Tool, IAsyncDisposable
         {
             if (ProviderService.SelectedProvider == "Github Copilot")
                 await SendWithGitHubCopilotAsync(userText, ct);
+            else if (ProviderService.SelectedProvider == "Google Gemini")
+                await SendWithGoogleAsync(userText, ct);
             else
                 await SendWithOllamaAsync(userText, ct);
         }
@@ -434,6 +478,123 @@ public partial class Tool5ViewModel : Tool, IAsyncDisposable
                 var assistantText = new StringBuilder();
 
                 await foreach (var update in _ollamaClient.GetStreamingResponseAsync(_chatHistory, options, ct))
+                {
+                    foreach (var content in update.Contents)
+                    {
+                        if (content is Ai.TextContent tc && tc.Text is { Length: > 0 })
+                        {
+                            assistantText.Append(tc.Text);
+                            var snapshot = assistantText.ToString();
+                            Dispatcher.UIThread.Post(() => assistantMsg.Content = snapshot);
+                        }
+                        else if (content is Ai.FunctionCallContent fcc)
+                        {
+                            pendingCalls.Add(fcc);
+                        }
+                        else if (content is Ai.UsageContent uc)
+                        {
+                            var inputCount = uc.Details.InputTokenCount;
+                            var outputCount = uc.Details.OutputTokenCount;
+                            Dispatcher.UIThread.Post(() =>
+                            {
+                                assistantMsg.InputTokens = inputCount;
+                                assistantMsg.OutputTokens = outputCount;
+                            });
+                        }
+                    }
+                }
+
+                if (assistantText.Length == 0 && pendingCalls.Count == 0)
+                {
+                    // Truly empty response — the model may still be loading on its first use.
+                    // Show an informative message instead of silently removing the bubble.
+                    Dispatcher.UIThread.Post(() =>
+                        assistantMsg.Content = "No response received. The model may still be loading — please send your message again.");
+                }
+                else if (assistantText.Length == 0)
+                {
+                    // Tool-call-only response: remove the empty placeholder bubble.
+                    Dispatcher.UIThread.Post(() => Messages.Remove(assistantMsg));
+                }
+
+                var historyContents = new List<Ai.AIContent>();
+                if (assistantText.Length > 0)
+                    historyContents.Add(new Ai.TextContent(assistantText.ToString()));
+                historyContents.AddRange(pendingCalls);
+                _chatHistory.Add(new AiChatMessage(AiChatRole.Assistant, historyContents));
+
+                if (pendingCalls.Count == 0)
+                    break;
+
+                var toolFunctions = tools.OfType<Ai.AIFunction>().ToDictionary(f => f.Name);
+                var toolResultContents = new List<Ai.AIContent>();
+
+                foreach (var call in pendingCalls)
+                {
+                    object? result;
+                    if (toolFunctions.TryGetValue(call.Name, out var func))
+                    {
+                        try
+                        {
+                            result = await func.InvokeAsync(new(call.Arguments!), ct);
+                        }
+                        catch (Exception ex)
+                        {
+                            result = $"Error executing tool: {ex.Message}";
+                        }
+                    }
+                    else
+                    {
+                        result = $"Error: tool '{call.Name}' not found.";
+                    }
+
+                    var toolMsg = new ChatMessage
+                    {
+                        IsUser = false,
+                        Kind = ChatMessageKind.ToolCall,
+                        Content = $"🔧 {call.Name}({FormatToolArgs(call.Name, call.Arguments)})\n→ {result}"
+                    };
+                    Messages.Add(toolMsg);
+                    toolResultContents.Add(new Ai.FunctionResultContent(call.CallId, result));
+                }
+
+                _chatHistory.Add(new AiChatMessage(AiChatRole.Tool, toolResultContents));
+            }
+        }
+        catch (Exception ex) when (!ct.IsCancellationRequested)
+        {
+            AppendErrorToLastAssistant(ex.Message);
+        }
+    }
+
+    // ── Google Gemini send ──────────────────────────────────────────────────────
+
+    private async Task SendWithGoogleAsync(string userText, CancellationToken ct)
+    {
+        if (_googleClient == null)
+        {
+            var client = new Client(apiKey: _googleApiKey);
+            _googleClient = Ai.GoogleGenAIExtensions.AsIChatClient(client, SelectedModel);
+        }
+
+        _chatHistory.Add(new AiChatMessage(AiChatRole.User, userText));
+
+        var tools = BuildTools();
+        var options = tools.Count > 0
+            ? new Ai.ChatOptions { Tools = tools, ToolMode = Ai.ChatToolMode.Auto }
+            : null;
+
+        try
+        {
+            for (var iteration = 0; iteration < MaxToolIterations && !ct.IsCancellationRequested; iteration++)
+            {
+                var assistantMsg = new ChatMessage { IsUser = false, Kind = ChatMessageKind.Assistant };
+                Messages.Add(assistantMsg);
+
+                var pendingCalls = new List<Ai.FunctionCallContent>();
+                var assistantText = new StringBuilder();
+
+                await foreach (var update in _googleClient.GetStreamingResponseAsync(_chatHistory, options, ct))
                 {
                     foreach (var content in update.Contents)
                     {
