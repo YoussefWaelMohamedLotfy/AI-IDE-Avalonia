@@ -14,7 +14,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Dock.Model.Mvvm.Controls;
 
-using GitHub.Copilot.SDK;
+using GitHub.Copilot;
 
 using Microsoft.Agents.AI;
 using Microsoft.Agents.AI.GitHub.Copilot;
@@ -68,7 +68,7 @@ public partial class Tool5ViewModel : Tool, IAsyncDisposable
 
     // ── Google Gemini backend ───────────────────────────────────────────────────
 
-    private readonly string _googleApiKey = "";
+    private readonly string _googleApiKey = "AQ.Ab8RN6JH1JwXsM9xM9CQHqzxjSsLvgCAmjUsAYsadzQtzITy8w";
     private IAiChatClient? _googleClient;
 
     private readonly List<string> _inputHistory = [];
@@ -222,7 +222,7 @@ public partial class Tool5ViewModel : Tool, IAsyncDisposable
     {
         try
         {
-            using var client = new CopilotClient(new CopilotClientOptions { CliPath = CopilotCliPath });
+            using var client = new CopilotClient(new CopilotClientOptions { WorkingDirectory = CopilotCliPath });
             await client.StartAsync(ct);
             var models = await client.ListModelsAsync(ct);
             _cachedCopilotModels.Clear();
@@ -302,7 +302,7 @@ public partial class Tool5ViewModel : Tool, IAsyncDisposable
         if (_copilotAgent != null && _copilotSession != null)
             return (_copilotAgent, _copilotSession);
 
-        _copilotClient = new CopilotClient(new CopilotClientOptions { CliPath = CopilotCliPath });
+        _copilotClient = new CopilotClient(new CopilotClientOptions { WorkingDirectory = CopilotCliPath });
         await _copilotClient.StartAsync();
 
         var sessionConfig = new SessionConfig
