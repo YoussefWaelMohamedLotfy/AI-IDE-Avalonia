@@ -1,7 +1,10 @@
 using System;
+using System.ClientModel;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
+using System.Net.Http;
+using System.Net.Http.Json;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Text.Json;
@@ -15,22 +18,23 @@ using CommunityToolkit.Mvvm.Input;
 using Dock.Model.Mvvm.Controls;
 
 using GitHub.Copilot;
+using Google.GenAI;
 
 using Microsoft.Agents.AI;
 using Microsoft.Agents.AI.GitHub.Copilot;
 using Microsoft.Extensions.DependencyInjection;
-using OllamaSharp;
+using OpenAI;
 using Ai = Microsoft.Extensions.AI;
 using AiChatMessage = Microsoft.Extensions.AI.ChatMessage;
 using AiChatRole = Microsoft.Extensions.AI.ChatRole;
 using IAiChatClient = Microsoft.Extensions.AI.IChatClient;
-using Google.GenAI;
 
 namespace AI_IDE_Avalonia.ViewModels.Tools;
 
-public partial class Tool5ViewModel : Tool, IAsyncDisposable
+public sealed partial class Tool5ViewModel : Tool, IAsyncDisposable
 {
-    private const string OllamaEndpoint = "http://localhost:11434";
+    private const string OllamaEndpoint = "http://localhost:11434/v1";
+    private const string OllamaNativeEndpoint = "http://localhost:11434";
     private const string DefaultOllamaModel = "gemma4:e2b";
     private const string DefaultCopilotModel = "gpt-5-mini";
     private const string DefaultGoogleModel = "gemini-2.5-flash";
@@ -41,7 +45,8 @@ public partial class Tool5ViewModel : Tool, IAsyncDisposable
         You have access to tools that manage the project file tree shown in the explorer panel.
         Use search_tree_nodes to find nodes by name, add_tree_node to create new files or folders, and delete_tree_node to remove nodes.
         Use write_to_document to write generated code or text directly into the editor — always prefer this tool when the user asks you to write, generate, or create code.
-        Paths use '/' as separator (e.g. 'MyAIProject/src/Agents'). 
+        Paths use '/' as separator (e.g. 'MyAIProject/src/Agents').
+        IMPORTANT: When calling a tool, you must always provide a brief text explanation first. Do not make a tool call without explaining it in text first.
         """;
 
     /// <summary>Shared Solution Explorer instance wired by DockFactory; used to create AI tree tools.</summary>
@@ -53,23 +58,22 @@ public partial class Tool5ViewModel : Tool, IAsyncDisposable
     private readonly List<string> _cachedCopilotModels = [];
     private readonly List<string> _cachedGoogleModels = [];
 
-    // ── Ollama backend ──────────────────────────────────────────────────────────
+    // ── Active IChatClient (Ollama or Google Gemini) ─────────────────────────────
 
-    private IAiChatClient _ollamaClient;
-    private readonly List<AiChatMessage> _chatHistory = [];
+    private IAiChatClient? _activeClient;
+
+    // ── Unified Agent & Session ─────────────────────────────────────────────────
+
+    private AIAgent? _activeAgent;
+    private AgentSession? _activeSession;
 
     // ── GitHub Copilot backend ──────────────────────────────────────────────────
 
     private CopilotClient? _copilotClient;
-    private GitHubCopilotAgent? _copilotAgent;
-    private AgentSession? _copilotSession;
 
-    // ── Input history ────────────────────────────────────────────────────────────
-
-    // ── Google Gemini backend ───────────────────────────────────────────────────
+    // ── Google Gemini ───────────────────────────────────────────────────────────
 
     private readonly string _googleApiKey = "AQ.Ab8RN6JH1JwXsM9xM9CQHqzxjSsLvgCAmjUsAYsadzQtzITy8w";
-    private IAiChatClient? _googleClient;
 
     private readonly List<string> _inputHistory = [];
     private int _historyIndex = -1;
@@ -108,42 +112,43 @@ public partial class Tool5ViewModel : Tool, IAsyncDisposable
 
     public Tool5ViewModel()
     {
-        _ollamaClient = new OllamaApiClient(new Uri(OllamaEndpoint), DefaultOllamaModel);
-        _chatHistory.Add(new AiChatMessage(AiChatRole.System, SystemInstructions));
-        ProviderService.ProviderChanged += OnProviderChanged;
         Title = Loc.AiChatTitle;
         Loc.PropertyChanged += (_, _) => Title = Loc.AiChatTitle;
+        ProviderService.ProviderChanged += OnProviderChanged;
         _ = PreloadAllModelsAsync();
     }
 
     // Singleton services resolved once and cached. Lazy to avoid accessing App.Services
     // before it is initialized (e.g. during design-time preview).
-    private AIProviderService? _providerService;
-    private DocumentService? _documentService;
-    private LocalizationService? _locService;
 
     private AIProviderService ProviderService =>
-        _providerService ??= App.Services.GetRequiredService<AIProviderService>();
+        field ??= App.Services.GetRequiredService<AIProviderService>();
 
     private DocumentService DocumentSvc =>
-        _documentService ??= App.Services.GetRequiredService<DocumentService>();
+        field ??= App.Services.GetRequiredService<DocumentService>();
 
     /// <summary>Provides localized strings for the AI chat panel.</summary>
     public LocalizationService Loc =>
-        _locService ??= App.Services.GetRequiredService<LocalizationService>();
+        field ??= App.Services.GetRequiredService<LocalizationService>();
 
     /// <summary>Localized label for tool-call bubbles in the chat.</summary>
     public string ChatToolCallLabel => Loc.ChatToolCall;
 
-    private void OnProviderChanged(object? sender, EventArgs e) =>
+    private void OnProviderChanged(object? sender, EventArgs e)
+    {
+        if (SelectedProvider != ProviderService.SelectedProvider)
+        {
+            SelectedProvider = ProviderService.SelectedProvider;
+        }
         _ = HandleProviderChangedAsync();
+    }
 
     private async Task HandleProviderChangedAsync()
     {
         await DisposeGitHubCopilotAsync();
-        DisposeGoogleClient();
-        _chatHistory.Clear();
-        _chatHistory.Add(new AiChatMessage(AiChatRole.System, SystemInstructions));
+        DisposeActiveClient();
+        _activeAgent = null;
+        _activeSession = null;
         Messages.Clear();
         PopulateAvailableModels(ProviderService.SelectedProvider);
         UpdateProviderLabels();
@@ -164,21 +169,18 @@ public partial class Tool5ViewModel : Tool, IAsyncDisposable
     {
         if (string.IsNullOrEmpty(value)) return;
 
-        if (ProviderService.SelectedProvider == "Ollama")
-        {
-            DisposeOllamaClient();
-            _ollamaClient = new OllamaApiClient(new Uri(OllamaEndpoint), value);
-        }
-        else if (ProviderService.SelectedProvider == "Google Gemini")
-        {
-            DisposeGoogleClient();
-            var client = new Client(apiKey: _googleApiKey);
-            _googleClient = Ai.GoogleGenAIExtensions.AsIChatClient(client, value);
-        }
-        else
+        if (ProviderService.SelectedProvider == "Github Copilot")
         {
             _ = DisposeGitHubCopilotAsync();
         }
+        else
+        {
+            DisposeActiveClient();
+            _activeClient = CreateChatClient(ProviderService.SelectedProvider, value);
+        }
+        
+        _activeAgent = null;
+        _activeSession = null;
 
         UpdateProviderLabels();
     }
@@ -206,11 +208,17 @@ public partial class Tool5ViewModel : Tool, IAsyncDisposable
     {
         try
         {
-            using var client = new OllamaApiClient(new Uri(OllamaEndpoint));
-            var models = await client.ListLocalModelsAsync(ct);
+            using var http = new HttpClient { BaseAddress = new Uri(OllamaNativeEndpoint) };
+            var json = await http.GetFromJsonAsync<JsonElement>("/api/tags", ct);
             _cachedOllamaModels.Clear();
-            foreach (var m in models)
-                _cachedOllamaModels.Add(m.Name);
+            if (json.TryGetProperty("models", out var arr))
+            {
+                foreach (var m in arr.EnumerateArray())
+                {
+                    if (m.TryGetProperty("name", out var name))
+                        _cachedOllamaModels.Add(name.GetString()!);
+                }
+            }
         }
         catch
         {
@@ -291,85 +299,112 @@ public partial class Tool5ViewModel : Tool, IAsyncDisposable
         }
     }
 
-    // ── GitHub Copilot lazy init ────────────────────────────────────────────────
+    // ── Unified Agent Creation ──────────────────────────────────────────────────
     private static readonly string CopilotExeFileName =
         RuntimeInformation.RuntimeIdentifier != "win-x64" ? "copilot" : "copilot.exe";
     private static readonly string CopilotCliPath =
         @$".\runtimes\{RuntimeInformation.RuntimeIdentifier}\native\{CopilotExeFileName}";
 
-    private async Task<(GitHubCopilotAgent agent, AgentSession session)> GetCopilotBackendAsync()
+    private async Task<(AIAgent agent, AgentSession session)> GetOrCreateAgentAsync()
     {
-        if (_copilotAgent != null && _copilotSession != null)
-            return (_copilotAgent, _copilotSession);
+        if (_activeAgent != null && _activeSession != null)
+            return (_activeAgent, _activeSession);
 
-        _copilotClient = new CopilotClient(new CopilotClientOptions { WorkingDirectory = CopilotCliPath });
-        await _copilotClient.StartAsync();
-
-        var sessionConfig = new SessionConfig
+        if (ProviderService.SelectedProvider == "Github Copilot")
         {
-            Model = SelectedModel,
-            ReasoningEffort = "low",
-            OnPermissionRequest = PermissionHandler.ApproveAll,
-            SystemMessage = new SystemMessageConfig
+            _copilotClient = new CopilotClient(new CopilotClientOptions { WorkingDirectory = CopilotCliPath });
+            await _copilotClient.StartAsync();
+
+            var sessionConfig = new SessionConfig
             {
-                Mode = SystemMessageMode.Append,
-                Content = SystemInstructions,
-            },
-            Tools = [.. BuildTools().OfType<Ai.AIFunction>()],
-            Hooks = new SessionHooks
-            {
-                OnPostToolUse = (input, _) =>
+                Model = SelectedModel,
+                ReasoningEffort = "low",
+                OnPermissionRequest = PermissionHandler.ApproveAll,
+                SystemMessage = new SystemMessageConfig
                 {
-                    var argsDisplay = input.ToolArgs is null ? string.Empty
-                        : FormatToolArgsJson(input.ToolName, JsonSerializer.Serialize(input.ToolArgs));
-                    var resultJson = input.ToolResult is null ? string.Empty
-                        : JsonSerializer.Serialize(input.ToolResult);
-
-                    var toolMsg = new ChatMessage
-                    {
-                        IsUser = false,
-                        Kind = ChatMessageKind.ToolCall,
-                        Content = $"🔧 {input.ToolName}({argsDisplay})\n→ {resultJson}",
-                    };
-                    Dispatcher.UIThread.Post(() => Messages.Add(toolMsg));
-                    return Task.FromResult<PostToolUseHookOutput?>(new PostToolUseHookOutput());
+                    Mode = SystemMessageMode.Append,
+                    Content = SystemInstructions,
                 },
-            },
-        };
+                Tools = [.. BuildTools().OfType<Ai.AIFunction>()],
+                Hooks = new SessionHooks
+                {
+                    OnPostToolUse = (input, _) =>
+                    {
+                        var argsDisplay = input.ToolArgs is null ? string.Empty
+                            : FormatToolArgsJson(input.ToolName, JsonSerializer.Serialize(input.ToolArgs));
+                        var resultJson = input.ToolResult is null ? string.Empty
+                            : JsonSerializer.Serialize(input.ToolResult);
 
-        _copilotAgent = new GitHubCopilotAgent(
-            copilotClient: _copilotClient,
-            sessionConfig: sessionConfig);
+                        var toolMsg = new ChatMessage
+                        {
+                            IsUser = false,
+                            Kind = ChatMessageKind.ToolCall,
+                            Content = $"🔧 {input.ToolName}({argsDisplay})\n→ {resultJson}",
+                        };
+                        Dispatcher.UIThread.Post(() => Messages.Add(toolMsg));
+                        return Task.FromResult<PostToolUseHookOutput?>(new PostToolUseHookOutput());
+                    },
+                },
+            };
 
-        _copilotSession = await _copilotAgent.CreateSessionAsync();
-        return (_copilotAgent, _copilotSession);
+            var copilotAgent = new GitHubCopilotAgent(
+                copilotClient: _copilotClient,
+                sessionConfig: sessionConfig);
+
+            _activeSession = await copilotAgent.CreateSessionAsync();
+            _activeAgent = copilotAgent;
+        }
+        else
+        {
+            _activeClient ??= CreateChatClient(ProviderService.SelectedProvider, SelectedModel);
+            var tools = BuildTools().OfType<Ai.AITool>().ToList();
+            _activeAgent = new ChatClientAgent(_activeClient, "AIAssistant", "IDE Assistant", SystemInstructions, tools);
+            _activeSession = await _activeAgent.CreateSessionAsync();
+        }
+
+        return (_activeAgent, _activeSession);
     }
 
     private async Task DisposeGitHubCopilotAsync()
     {
-        if (_copilotAgent != null)
+        if (_activeAgent is GitHubCopilotAgent copilotAgent)
         {
-            await _copilotAgent.DisposeAsync();
-            _copilotAgent = null;
+            await copilotAgent.DisposeAsync();
         }
         if (_copilotClient != null)
         {
             await _copilotClient.DisposeAsync();
             _copilotClient = null;
         }
-        _copilotSession = null;
+        _activeAgent = null;
+        _activeSession = null;
     }
 
-    private void DisposeOllamaClient()
+    /// <summary>
+    /// Creates an <see cref="IAiChatClient"/> for the given provider and model.
+    /// Ollama uses the OpenAI SDK pointed at the local /v1 endpoint;
+    /// Google Gemini uses the GenAI SDK.
+    /// </summary>
+    private IAiChatClient CreateChatClient(string provider, string model) => provider switch
     {
-        if (_ollamaClient is IDisposable disposable)
-            disposable.Dispose();
+        "Google Gemini" => Ai.GoogleGenAIExtensions.AsIChatClient(new Client(apiKey: _googleApiKey), model),
+        _ => CreateOllamaClient(model),
+    };
+
+    private static IAiChatClient CreateOllamaClient(string model)
+    {
+        var openAiClient = new OpenAIClient(
+            new ApiKeyCredential("ollama"),
+            new OpenAIClientOptions { Endpoint = new Uri(OllamaEndpoint) });
+
+        return Ai.OpenAIClientExtensions.AsIChatClient(openAiClient.GetChatClient(model));
     }
 
-    private void DisposeGoogleClient()
+    private void DisposeActiveClient()
     {
-        if (_googleClient is IDisposable disposable)
+        if (_activeClient is IDisposable disposable)
             disposable.Dispose();
+        _activeClient = null;
     }
 
     // ── Send command ───────────────────────────────────────────────────────────
@@ -391,12 +426,90 @@ public partial class Tool5ViewModel : Tool, IAsyncDisposable
 
         try
         {
-            if (ProviderService.SelectedProvider == "Github Copilot")
-                await SendWithGitHubCopilotAsync(userText, ct);
-            else if (ProviderService.SelectedProvider == "Google Gemini")
-                await SendWithGoogleAsync(userText, ct);
-            else
-                await SendWithOllamaAsync(userText, ct);
+            var (agent, session) = await GetOrCreateAgentAsync();
+
+            ChatMessage? currentAssistantMsg = new ChatMessage { IsUser = false, Kind = ChatMessageKind.Assistant };
+            Messages.Add(currentAssistantMsg);
+
+            var assistantText = new StringBuilder();
+
+            await foreach (var update in agent.RunStreamingAsync(userText, session, null, ct))
+            {
+                // Append text chunks. If we previously added a tool call bubble, we need a new assistant bubble for the final answer.
+                if (update.Text is { Length: > 0 })
+                {
+                    if (currentAssistantMsg == null)
+                    {
+                        currentAssistantMsg = new ChatMessage { IsUser = false, Kind = ChatMessageKind.Assistant };
+                        Dispatcher.UIThread.Post(() => Messages.Add(currentAssistantMsg));
+                        assistantText.Clear();
+                    }
+
+                    assistantText.Append(update.Text);
+                    var snapshot = assistantText.ToString();
+                    Dispatcher.UIThread.Post(() => currentAssistantMsg.Content = snapshot);
+                }
+
+                // Extract tool calls and usage info from the raw contents
+                foreach (var content in update.Contents)
+                {
+                    if (content is Ai.UsageContent uc)
+                    {
+                        var inputCount = uc.Details.InputTokenCount;
+                        var outputCount = uc.Details.OutputTokenCount;
+                        Dispatcher.UIThread.Post(() =>
+                        {
+                            if (currentAssistantMsg != null)
+                            {
+                                currentAssistantMsg.InputTokens = inputCount;
+                                currentAssistantMsg.OutputTokens = outputCount;
+                            }
+                        });
+                    }
+                    else if (content is Ai.FunctionCallContent fcc)
+                    {
+                        var toolMsg = new ChatMessage
+                        {
+                            IsUser = false,
+                            Kind = ChatMessageKind.ToolCall,
+                            Content = $"🔧 {fcc.Name}({FormatToolArgs(fcc.Name, fcc.Arguments)})"
+                        };
+                        Dispatcher.UIThread.Post(() => Messages.Add(toolMsg));
+                        
+                        // Set currentAssistantMsg to null so any text after this tool call gets its own bubble BELOW the tool call.
+                        currentAssistantMsg = null;
+                    }
+                    else if (content is Ai.FunctionResultContent frc)
+                    {
+                        // Append the result to the last tool bubble
+                        Dispatcher.UIThread.Post(() =>
+                        {
+                            var lastTool = Messages.LastOrDefault(m => m.Kind == ChatMessageKind.ToolCall);
+                            if (lastTool != null)
+                                lastTool.Content += $"\n→ {frc.Result}";
+                        });
+                    }
+                }
+            }
+
+            if (assistantText.Length == 0 && currentAssistantMsg != null)
+            {
+                // Truly empty response or tool-call-only response
+                var hasToolCall = Messages.Any(m => m.Kind == ChatMessageKind.ToolCall);
+                if (!hasToolCall)
+                {
+                    Dispatcher.UIThread.Post(() =>
+                        currentAssistantMsg.Content = "No response received. The model may still be loading — please send your message again.");
+                }
+                else
+                {
+                    Dispatcher.UIThread.Post(() => Messages.Remove(currentAssistantMsg));
+                }
+            }
+        }
+        catch (Exception ex) when (!ct.IsCancellationRequested)
+        {
+            AppendErrorToLastAssistant(ex.Message);
         }
         finally
         {
@@ -413,8 +526,7 @@ public partial class Tool5ViewModel : Tool, IAsyncDisposable
     private void Clear()
     {
         Messages.Clear();
-        _chatHistory.Clear();
-        _chatHistory.Add(new AiChatMessage(AiChatRole.System, SystemInstructions));
+        _activeSession = null; // Forces a new session on next message
     }
 
     internal void NavigateHistoryUp()
@@ -456,274 +568,7 @@ public partial class Tool5ViewModel : Tool, IAsyncDisposable
         }
     }
 
-    // ── Ollama send ────────────────────────────────────────────────────────────
 
-    private async Task SendWithOllamaAsync(string userText, CancellationToken ct)
-    {
-        _chatHistory.Add(new AiChatMessage(AiChatRole.User, userText));
-
-        var tools = BuildTools();
-        var options = tools.Count > 0
-            ? new Ai.ChatOptions { Tools = tools, ToolMode = Ai.ChatToolMode.Auto }
-            : null;
-
-        try
-        {
-            for (var iteration = 0; iteration < MaxToolIterations && !ct.IsCancellationRequested; iteration++)
-            {
-                var assistantMsg = new ChatMessage { IsUser = false, Kind = ChatMessageKind.Assistant };
-                Messages.Add(assistantMsg);
-
-                var pendingCalls = new List<Ai.FunctionCallContent>();
-                var assistantText = new StringBuilder();
-
-                await foreach (var update in _ollamaClient.GetStreamingResponseAsync(_chatHistory, options, ct))
-                {
-                    foreach (var content in update.Contents)
-                    {
-                        if (content is Ai.TextContent tc && tc.Text is { Length: > 0 })
-                        {
-                            assistantText.Append(tc.Text);
-                            var snapshot = assistantText.ToString();
-                            Dispatcher.UIThread.Post(() => assistantMsg.Content = snapshot);
-                        }
-                        else if (content is Ai.FunctionCallContent fcc)
-                        {
-                            pendingCalls.Add(fcc);
-                        }
-                        else if (content is Ai.UsageContent uc)
-                        {
-                            var inputCount = uc.Details.InputTokenCount;
-                            var outputCount = uc.Details.OutputTokenCount;
-                            Dispatcher.UIThread.Post(() =>
-                            {
-                                assistantMsg.InputTokens = inputCount;
-                                assistantMsg.OutputTokens = outputCount;
-                            });
-                        }
-                    }
-                }
-
-                if (assistantText.Length == 0 && pendingCalls.Count == 0)
-                {
-                    // Truly empty response — the model may still be loading on its first use.
-                    // Show an informative message instead of silently removing the bubble.
-                    Dispatcher.UIThread.Post(() =>
-                        assistantMsg.Content = "No response received. The model may still be loading — please send your message again.");
-                }
-                else if (assistantText.Length == 0)
-                {
-                    // Tool-call-only response: remove the empty placeholder bubble.
-                    Dispatcher.UIThread.Post(() => Messages.Remove(assistantMsg));
-                }
-
-                var historyContents = new List<Ai.AIContent>();
-                if (assistantText.Length > 0)
-                    historyContents.Add(new Ai.TextContent(assistantText.ToString()));
-                historyContents.AddRange(pendingCalls);
-                _chatHistory.Add(new AiChatMessage(AiChatRole.Assistant, historyContents));
-
-                if (pendingCalls.Count == 0)
-                    break;
-
-                var toolFunctions = tools.OfType<Ai.AIFunction>().ToDictionary(f => f.Name);
-                var toolResultContents = new List<Ai.AIContent>();
-
-                foreach (var call in pendingCalls)
-                {
-                    object? result;
-                    if (toolFunctions.TryGetValue(call.Name, out var func))
-                    {
-                        try
-                        {
-                            result = await func.InvokeAsync(new(call.Arguments!), ct);
-                        }
-                        catch (Exception ex)
-                        {
-                            result = $"Error executing tool: {ex.Message}";
-                        }
-                    }
-                    else
-                    {
-                        result = $"Error: tool '{call.Name}' not found.";
-                    }
-
-                    var toolMsg = new ChatMessage
-                    {
-                        IsUser = false,
-                        Kind = ChatMessageKind.ToolCall,
-                        Content = $"🔧 {call.Name}({FormatToolArgs(call.Name, call.Arguments)})\n→ {result}"
-                    };
-                    Messages.Add(toolMsg);
-                    toolResultContents.Add(new Ai.FunctionResultContent(call.CallId, result));
-                }
-
-                _chatHistory.Add(new AiChatMessage(AiChatRole.Tool, toolResultContents));
-            }
-        }
-        catch (Exception ex) when (!ct.IsCancellationRequested)
-        {
-            AppendErrorToLastAssistant(ex.Message);
-        }
-    }
-
-    // ── Google Gemini send ──────────────────────────────────────────────────────
-
-    private async Task SendWithGoogleAsync(string userText, CancellationToken ct)
-    {
-        if (_googleClient == null)
-        {
-            var client = new Client(apiKey: _googleApiKey);
-            _googleClient = Ai.GoogleGenAIExtensions.AsIChatClient(client, SelectedModel);
-        }
-
-        _chatHistory.Add(new AiChatMessage(AiChatRole.User, userText));
-
-        var tools = BuildTools();
-        var options = tools.Count > 0
-            ? new Ai.ChatOptions { Tools = tools, ToolMode = Ai.ChatToolMode.Auto }
-            : null;
-
-        try
-        {
-            for (var iteration = 0; iteration < MaxToolIterations && !ct.IsCancellationRequested; iteration++)
-            {
-                var assistantMsg = new ChatMessage { IsUser = false, Kind = ChatMessageKind.Assistant };
-                Messages.Add(assistantMsg);
-
-                var pendingCalls = new List<Ai.FunctionCallContent>();
-                var assistantText = new StringBuilder();
-
-                await foreach (var update in _googleClient.GetStreamingResponseAsync(_chatHistory, options, ct))
-                {
-                    foreach (var content in update.Contents)
-                    {
-                        if (content is Ai.TextContent tc && tc.Text is { Length: > 0 })
-                        {
-                            assistantText.Append(tc.Text);
-                            var snapshot = assistantText.ToString();
-                            Dispatcher.UIThread.Post(() => assistantMsg.Content = snapshot);
-                        }
-                        else if (content is Ai.FunctionCallContent fcc)
-                        {
-                            pendingCalls.Add(fcc);
-                        }
-                        else if (content is Ai.UsageContent uc)
-                        {
-                            var inputCount = uc.Details.InputTokenCount;
-                            var outputCount = uc.Details.OutputTokenCount;
-                            Dispatcher.UIThread.Post(() =>
-                            {
-                                assistantMsg.InputTokens = inputCount;
-                                assistantMsg.OutputTokens = outputCount;
-                            });
-                        }
-                    }
-                }
-
-                if (assistantText.Length == 0 && pendingCalls.Count == 0)
-                {
-                    // Truly empty response — the model may still be loading on its first use.
-                    // Show an informative message instead of silently removing the bubble.
-                    Dispatcher.UIThread.Post(() =>
-                        assistantMsg.Content = "No response received. The model may still be loading — please send your message again.");
-                }
-                else if (assistantText.Length == 0)
-                {
-                    // Tool-call-only response: remove the empty placeholder bubble.
-                    Dispatcher.UIThread.Post(() => Messages.Remove(assistantMsg));
-                }
-
-                var historyContents = new List<Ai.AIContent>();
-                if (assistantText.Length > 0)
-                    historyContents.Add(new Ai.TextContent(assistantText.ToString()));
-                historyContents.AddRange(pendingCalls);
-                _chatHistory.Add(new AiChatMessage(AiChatRole.Assistant, historyContents));
-
-                if (pendingCalls.Count == 0)
-                    break;
-
-                var toolFunctions = tools.OfType<Ai.AIFunction>().ToDictionary(f => f.Name);
-                var toolResultContents = new List<Ai.AIContent>();
-
-                foreach (var call in pendingCalls)
-                {
-                    object? result;
-                    if (toolFunctions.TryGetValue(call.Name, out var func))
-                    {
-                        try
-                        {
-                            result = await func.InvokeAsync(new(call.Arguments!), ct);
-                        }
-                        catch (Exception ex)
-                        {
-                            result = $"Error executing tool: {ex.Message}";
-                        }
-                    }
-                    else
-                    {
-                        result = $"Error: tool '{call.Name}' not found.";
-                    }
-
-                    var toolMsg = new ChatMessage
-                    {
-                        IsUser = false,
-                        Kind = ChatMessageKind.ToolCall,
-                        Content = $"🔧 {call.Name}({FormatToolArgs(call.Name, call.Arguments)})\n→ {result}"
-                    };
-                    Messages.Add(toolMsg);
-                    toolResultContents.Add(new Ai.FunctionResultContent(call.CallId, result));
-                }
-
-                _chatHistory.Add(new AiChatMessage(AiChatRole.Tool, toolResultContents));
-            }
-        }
-        catch (Exception ex) when (!ct.IsCancellationRequested)
-        {
-            AppendErrorToLastAssistant(ex.Message);
-        }
-    }
-
-    // ── GitHub Copilot send ────────────────────────────────────────────────────
-
-    private async Task SendWithGitHubCopilotAsync(string userText, CancellationToken ct)
-    {
-        var assistantMsg = new ChatMessage { IsUser = false, Kind = ChatMessageKind.Assistant };
-        Messages.Add(assistantMsg);
-
-        try
-        {
-            var (agent, session) = await GetCopilotBackendAsync();
-            var assistantText = new StringBuilder();
-
-            await foreach (var update in agent.RunStreamingAsync(userText, session, null, ct))
-            {
-                var text = update.Text;
-                if (text is { Length: > 0 })
-                {
-                    assistantText.Append(text);
-                    assistantMsg.Content = assistantText.ToString();
-                }
-
-                foreach (var content in update.Contents)
-                {
-                    if (content is Ai.UsageContent uc)
-                    {
-                        assistantMsg.InputTokens = uc.Details.InputTokenCount;
-                        assistantMsg.OutputTokens = uc.Details.OutputTokenCount;
-                    }
-                }
-            }
-
-            // If the agent only made tool calls and produced no text, remove the empty placeholder.
-            if (assistantText.Length == 0)
-                Dispatcher.UIThread.Post(() => Messages.Remove(assistantMsg));
-        }
-        catch (Exception ex) when (!ct.IsCancellationRequested)
-        {
-            AppendErrorToLastAssistant(ex.Message);
-        }
-    }
 
     // ── Helpers ────────────────────────────────────────────────────────────────
 
@@ -750,7 +595,7 @@ public partial class Tool5ViewModel : Tool, IAsyncDisposable
                 new Func<string, string>(query => solutionExplorer.SearchNodes(query)),
                 "search_tree_nodes",
                 "Search the project file tree for nodes whose name contains the given query string. " +
-                "Returns matching node paths separated by '/'."));
+                "Returns a formatted string containing the matching node paths."));
 
             tools.Add(Ai.AIFunctionFactory.Create(
                 new Func<string, string, bool, string>((parentPath, nodeName, isFolder) =>
@@ -868,6 +713,6 @@ public partial class Tool5ViewModel : Tool, IAsyncDisposable
         GC.SuppressFinalize(this);
         ProviderService.ProviderChanged -= OnProviderChanged;
         await DisposeGitHubCopilotAsync();
-        DisposeOllamaClient();
+        DisposeActiveClient();
     }
 }

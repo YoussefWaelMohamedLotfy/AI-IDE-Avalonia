@@ -11,12 +11,13 @@
     <!-- Ensure WasmBuildApp runs during a normal Build (not only on Publish), including from VS -->
     <WasmBuildOnlyAfterPublish>false</WasmBuildOnlyAfterPublish>
     <WasmAllowUndefinedSymbols>true</WasmAllowUndefinedSymbols>
+    <SkipCopyingSymbolsToOutputDirectory>true</SkipCopyingSymbolsToOutputDirectory>
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Avalonia.Browser" Version="12.0.4" />
-    <PackageReference Include="HarfBuzzSharp.NativeAssets.WebAssembly" Version="8.3.1.5" />
-    <PackageReference Include="SkiaSharp.NativeAssets.WebAssembly" Version="3.119.4" />
+    <PackageReference Include="Avalonia.Browser" Version="12.0.5" />
+    <PackageReference Include="HarfBuzzSharp.NativeAssets.WebAssembly" Version="14.2.0" />
+    <PackageReference Include="SkiaSharp.NativeAssets.WebAssembly" Version="4.148.0" />
   </ItemGroup>
 
   <ItemGroup>
