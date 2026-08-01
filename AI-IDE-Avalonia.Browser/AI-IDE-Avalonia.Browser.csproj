@@ -15,9 +15,9 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Avalonia.Browser" Version="12.0.5" />
-    <PackageReference Include="HarfBuzzSharp.NativeAssets.WebAssembly" Version="14.2.0" />
-    <PackageReference Include="SkiaSharp.NativeAssets.WebAssembly" Version="4.148.0" />
+    <PackageReference Include="Avalonia.Browser" Version="12.1.0" />
+    <PackageReference Include="HarfBuzzSharp.NativeAssets.WebAssembly" Version="14.2.1" />
+    <PackageReference Include="SkiaSharp.NativeAssets.WebAssembly" Version="4.150.0" />
   </ItemGroup>
 
   <ItemGroup>
