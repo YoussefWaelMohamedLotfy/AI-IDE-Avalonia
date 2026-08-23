@@ -51,9 +51,9 @@
     <PackageReference Include="Dock.Model.Mvvm" Version="12.1.0.4" />
     <PackageReference Include="Dock.Serializer.SystemTextJson" Version="12.1.0.4" />
     <PackageReference Include="Google.GenAI" Version="1.19.0" />
-    <PackageReference Include="Microsoft.Agents.AI" Version="1.18.0" />
-    <PackageReference Include="Microsoft.Agents.AI.OpenAI" Version="1.18.0" />
-    <PackageReference Include="Microsoft.Agents.AI.GitHub.Copilot" Version="1.18.0" />
+    <PackageReference Include="Microsoft.Agents.AI" Version="1.19.0" />
+    <PackageReference Include="Microsoft.Agents.AI.OpenAI" Version="1.19.0" />
+    <PackageReference Include="Microsoft.Agents.AI.GitHub.Copilot" Version="1.19.0" />
     <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="10.0.11" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.11" />
     <PackageReference Include="Microsoft.Extensions.Logging" Version="10.0.11" />
