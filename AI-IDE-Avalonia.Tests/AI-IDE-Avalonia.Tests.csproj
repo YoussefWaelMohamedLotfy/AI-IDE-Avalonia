@@ -10,7 +10,7 @@
   <ItemGroup>
     <PackageReference Include="Avalonia.Headless" Version="12.1.2" />
     <PackageReference Include="Avalonia.Skia" Version="12.1.2" />
-    <PackageReference Include="TUnit" Version="1.65.68" />
+    <PackageReference Include="TUnit" Version="1.68.17" />
   </ItemGroup>
 
   <ItemGroup>
