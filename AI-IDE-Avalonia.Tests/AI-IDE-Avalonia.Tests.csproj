@@ -8,9 +8,9 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Avalonia.Headless" Version="12.1.2" />
-    <PackageReference Include="Avalonia.Skia" Version="12.1.2" />
-    <PackageReference Include="TUnit" Version="1.68.17" />
+    <PackageReference Include="Avalonia.Headless" Version="12.1.3" />
+    <PackageReference Include="Avalonia.Skia" Version="12.1.3" />
+    <PackageReference Include="TUnit" Version="1.72.10" />
   </ItemGroup>
 
   <ItemGroup>
